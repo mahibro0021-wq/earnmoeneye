@@ -77,7 +77,8 @@ module.exports = async (req, res) => {
       adsWatchedTotal: user.adsWatchedTotal,
       referralsCount: user.referralsCount,
       referralLink: `https://t.me/${botUsername}/app?startapp=${user.telegramId}`,
-      achievements: user.achievements || { ref10Claimed: false, ads17ClaimedDate: null }
+      achievements: user.achievements || { ref10Claimed: false, ads17ClaimedDate: null },
+      hasDeposited: !!user.hasDeposited
     });
   } catch (e) {
     console.error(e);
