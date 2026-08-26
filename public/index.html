@@ -101,7 +101,48 @@
       </div>
     </div>
 
-    <div class="form-card">
+    <!-- Shown until the user's ৳500 one-time deposit is admin-approved.
+         Hidden (display:none) once state.hasDeposited is true. -->
+    <div class="form-card" id="depositGate" style="display:none">
+      <div style="color:var(--text);font-size:13px;line-height:1.6;margin-bottom:12px">
+        💳 <b>উইথড্র করার জন্য প্রথমে ৳500 ডিপোজিট করতে হবে।</b><br>
+        এটি কোনো extra চার্জ নয় — এই ৳500 আপনার balance-এর সাথেই যোগ হয়ে যাবে এবং আপনি এটাও আপনার withdraw balance থেকে উইথড্র করতে পারবেন।
+      </div>
+
+      <div class="form-field">
+        <span class="field-icon">🏦</span>
+        <select id="depositMethodSelect">
+          <option value="bkash">bKash</option>
+          <option value="nagad">Nagad</option>
+        </select>
+      </div>
+
+      <div class="ref-link-label" style="margin-top:6px">এই নাম্বারে ৳<span id="depositAmountLabel">500</span> পাঠান</div>
+      <div class="ref-link-box" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <span id="depositNumberDisplay">-</span>
+        <button class="btn btn-secondary" id="copyDepositNumberBtn" style="padding:6px 12px">📋 Copy</button>
+      </div>
+
+      <div class="section-title" style="margin-top:14px">
+        <span>PAYMENT ট্রানজেকশন</span>
+      </div>
+      <div class="form-field">
+        <span class="field-icon">🧾</span>
+        <input type="text" id="depositTxnInput" placeholder="Transaction ID (ট্রানজেকশন আইডি)">
+      </div>
+      <div class="form-field">
+        <span class="field-icon">📱</span>
+        <input type="text" id="depositSenderInput" placeholder="যে নাম্বার থেকে টাকা পাঠিয়েছেন" inputmode="numeric">
+      </div>
+      <button class="btn btn-primary btn-full" id="submitDepositBtn">Submit</button>
+
+      <div class="section-title" style="margin-top:16px">
+        <span>DEPOSIT HISTORY</span>
+      </div>
+      <div id="depositHistoryList"><div class="empty-state">এখনো কোনো ডিপোজিট রিকুয়েস্ট নেই</div></div>
+    </div>
+
+    <div class="form-card" id="withdrawForm" style="display:none">
       <div class="form-field">
         <span class="field-icon">🏦</span>
         <select id="methodSelect">
