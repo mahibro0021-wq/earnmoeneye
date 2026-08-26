@@ -41,6 +41,8 @@ document.querySelectorAll('.admin-tabs')[0].querySelectorAll('.admin-tab-btn').f
     btn.classList.add('active');
     document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
     document.getElementById('s-' + btn.dataset.s).classList.add('active');
+    if (btn.dataset.s === 'deposits') loadDeposits('pending');
+    if (btn.dataset.s === 'allusers') loadAllUsers();
   });
 });
 
@@ -135,6 +137,52 @@ async function loadWithdraws(status) {
   } catch (e) { console.error(e); }
 }
 
+// ---------- deposits ----------
+document.querySelectorAll('.admin-tabs')[2].querySelectorAll('.admin-tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.admin-tabs')[2].querySelectorAll('.admin-tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    loadDeposits(btn.dataset.dstatus);
+  });
+});
+
+async function loadDeposits(status) {
+  try {
+    const qs = new URLSearchParams({ initData, action: 'list_deposits', status });
+    const data = await api('/api/admin?' + qs.toString());
+    const list = document.getElementById('depositListAdmin');
+    list.innerHTML = data.deposits.map(d => `
+      <div class="withdraw-row">
+        <div class="row-line"><b>${escapeHtml(d.displayName)}</b><span>৳${d.amount}</span></div>
+        <div style="color:var(--text-muted)">${d.method.toUpperCase()} • Sender: ${escapeHtml(d.senderNumber)}</div>
+        <div style="color:var(--text-muted)">Transaction ID: ${escapeHtml(d.transactionId)}</div>
+        <div style="color:var(--text-muted)">UID: ${d.telegramId}</div>
+        ${status === 'pending' ? `
+          <div class="row-actions">
+            <button class="btn-approve" data-approve="${d._id}">Approve</button>
+            <button class="btn-reject" data-reject="${d._id}">Reject</button>
+          </div>` : ''}
+      </div>
+    `).join('') || '<div class="empty-state">কিছু নেই</div>';
+
+    list.querySelectorAll('[data-approve]').forEach(b => b.addEventListener('click', async () => {
+      try {
+        await api('/api/admin', { method: 'POST', body: { initData, action: 'approve_deposit', depositId: b.dataset.approve } });
+        toast('✅ Deposit Approved', 'success');
+        loadDeposits('pending');
+      } catch (e) { toast('করা যায়নি', 'error'); }
+    }));
+    list.querySelectorAll('[data-reject]').forEach(b => b.addEventListener('click', async () => {
+      const reason = prompt('Reject reason (optional):') || '';
+      try {
+        await api('/api/admin', { method: 'POST', body: { initData, action: 'reject_deposit', depositId: b.dataset.reject, reason } });
+        toast('❌ Rejected', 'success');
+        loadDeposits('pending');
+      } catch (e) { toast('করা যায়নি', 'error'); }
+    }));
+  } catch (e) { console.error(e); }
+}
+
 // ---------- users ----------
 document.getElementById('userSearchBtn').addEventListener('click', async () => {
   const q = document.getElementById('userSearchInput').value.trim();
@@ -150,13 +198,47 @@ document.getElementById('userSearchBtn').addEventListener('click', async () => {
         <div>Balance: ৳${Number(u.balance).toFixed(2)}</div>
         <div>Ads watched (total): ${u.adsWatchedTotal || 0}</div>
         <div>Referrals: ${u.referralsCount || 0}</div>
+        <div>Deposit করেছে: ${u.hasDeposited ? '✅ হ্যাঁ' : '❌ না'}</div>
         <div>Withdrawals approved: ${data.withdrawCount} (মোট ৳${data.totalPaid})</div>
+        <div class="field-label" style="margin-top:10px">Balance +/- করুন</div>
+        <div style="display:flex;gap:8px;margin-top:4px">
+          <input class="admin-input" type="number" id="adjustAmountInput" placeholder="যেমন: 100 বা -50" style="flex:1">
+          <button class="btn-toggle" id="adjustBalanceBtn" data-uid="${u.telegramId}" style="white-space:nowrap;padding:0 14px;border-radius:8px">Apply</button>
+        </div>
       </div>
     `;
+    document.getElementById('adjustBalanceBtn').addEventListener('click', async () => {
+      const amount = document.getElementById('adjustAmountInput').value;
+      if (!amount || Number(amount) === 0) { toast('একটি amount দিন', 'error'); return; }
+      if (!confirm(`${amount > 0 ? '+' : ''}${amount} টাকা balance-এ apply করবেন?`)) return;
+      try {
+        await api('/api/admin', { method: 'POST', body: { initData, action: 'adjust_balance', telegramId: u.telegramId, amount } });
+        toast('✅ Balance আপডেট হয়েছে', 'success');
+        document.getElementById('userSearchBtn').click();
+      } catch (e) {
+        toast('Balance আপডেট করা যায়নি', 'error');
+      }
+    });
   } catch (e) {
     document.getElementById('userResult').innerHTML = `<div class="empty-state">ইউজার পাওয়া যায়নি</div>`;
   }
 });
+
+// ---------- all users ----------
+async function loadAllUsers() {
+  try {
+    const qs = new URLSearchParams({ initData, action: 'list_users' });
+    const data = await api('/api/admin?' + qs.toString());
+    const list = document.getElementById('allUsersList');
+    list.innerHTML = `<div style="color:var(--text-muted);font-size:12px;margin-bottom:10px">মোট ${data.users.length} জন ইউজার</div>` + (data.users.map(u => `
+      <div class="task-row">
+        <div class="row-line"><b>${escapeHtml(u.firstName || '')} ${escapeHtml(u.lastName || '')}</b><span>৳${Number(u.balance || 0).toFixed(2)}</span></div>
+        <div style="color:var(--text-muted)">UID: ${u.telegramId} ${u.username ? '• @' + escapeHtml(u.username) : ''}</div>
+        <div style="color:var(--text-muted)">Referrals: ${u.referralsCount || 0}</div>
+      </div>
+    `).join('') || '<div class="empty-state">কোনো ইউজার নেই</div>');
+  } catch (e) { console.error(e); }
+}
 
 function escapeHtml(str) {
   const d = document.createElement('div');
