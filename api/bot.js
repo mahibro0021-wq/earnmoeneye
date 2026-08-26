@@ -1,5 +1,7 @@
 const { sendMessage } = require('./_telegram');
 
+const HARDCODED_ADMIN_ID = '5697990319';
+
 module.exports = async (req, res) => {
   try {
     const update = req.body;
@@ -13,6 +15,27 @@ module.exports = async (req, res) => {
         {
           reply_markup: {
             inline_keyboard: [[{ text: '💰 অ্যাপ চালু করুন', web_app: { url: appUrl } }]]
+          }
+        }
+      );
+    }
+
+    // Admin-only: opens the admin panel as a real Telegram Mini App,
+    // so it gets valid initData (opening the plain URL in a normal
+    // browser tab will NOT work — Telegram never sends initData there).
+    if (msg && msg.text && msg.text.startsWith('/admin')) {
+      const adminId = process.env.ADMIN_TELEGRAM_ID || HARDCODED_ADMIN_ID;
+      if (String(msg.from.id) !== String(adminId)) {
+        await sendMessage(msg.chat.id, '🔒 এই কমান্ড শুধুমাত্র অ্যাডমিনের জন্য।');
+        return res.status(200).json({ ok: true });
+      }
+      const appUrl = process.env.APP_URL;
+      await sendMessage(
+        msg.chat.id,
+        '⚙️ Admin Panel',
+        {
+          reply_markup: {
+            inline_keyboard: [[{ text: '⚙️ Open Admin Panel', web_app: { url: `${appUrl}/admin.html` } }]]
           }
         }
       );
