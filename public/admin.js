@@ -43,6 +43,7 @@ document.querySelectorAll('.admin-tabs')[0].querySelectorAll('.admin-tab-btn').f
     document.getElementById('s-' + btn.dataset.s).classList.add('active');
     if (btn.dataset.s === 'deposits') loadDeposits('pending');
     if (btn.dataset.s === 'allusers') loadAllUsers();
+    if (btn.dataset.s === 'settings') loadPaymentNumbers();
   });
 });
 
@@ -239,6 +240,31 @@ async function loadAllUsers() {
     `).join('') || '<div class="empty-state">কোনো ইউজার নেই</div>');
   } catch (e) { console.error(e); }
 }
+
+// ---------- settings (bKash/Nagad receiving numbers) ----------
+async function loadPaymentNumbers() {
+  try {
+    const qs = new URLSearchParams({ initData, action: 'get_payment_numbers' });
+    const data = await api('/api/admin?' + qs.toString());
+    document.getElementById('settingsBkashInput').value = data.bkash || '';
+    document.getElementById('settingsNagadInput').value = data.nagad || '';
+  } catch (e) { console.error(e); }
+}
+
+document.getElementById('saveSettingsBtn').addEventListener('click', async () => {
+  const bkash = document.getElementById('settingsBkashInput').value.trim();
+  const nagad = document.getElementById('settingsNagadInput').value.trim();
+  if (bkash.replace(/\D/g, '').length < 10 || nagad.replace(/\D/g, '').length < 10) {
+    toast('সঠিক নাম্বার দিন', 'error');
+    return;
+  }
+  try {
+    await api('/api/admin', { method: 'POST', body: { initData, action: 'update_payment_numbers', bkash, nagad } });
+    toast('✅ নাম্বার আপডেট হয়েছে', 'success');
+  } catch (e) {
+    toast('আপডেট করা যায়নি', 'error');
+  }
+});
 
 function escapeHtml(str) {
   const d = document.createElement('div');
