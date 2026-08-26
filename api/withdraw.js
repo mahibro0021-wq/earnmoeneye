@@ -11,22 +11,10 @@ const MIN_WITHDRAW = { bkash: 1000, nagad: 1000 };
 // can withdraw. After their first approved deposit, hasDeposited stays
 // true forever and they never see this step again.
 const DEPOSIT_AMOUNT = 500;
-const DEFAULT_DEPOSIT_NUMBERS = {
+const DEPOSIT_NUMBERS = {
   bkash: process.env.DEPOSIT_BKASH_NUMBER || '01700000000',
   nagad: process.env.DEPOSIT_NAGAD_NUMBER || '01800000000',
 };
-
-// The admin can override these receiving bKash/Nagad numbers anytime from
-// the Admin Panel → Settings tab (stored in the `settings` collection,
-// doc _id: 'payment_numbers'). Falls back to the env-var defaults above
-// for any method the admin hasn't set yet.
-async function getPaymentNumbers(db) {
-  const doc = await db.collection('settings').findOne({ _id: 'payment_numbers' });
-  return {
-    bkash: (doc && doc.bkash) || DEFAULT_DEPOSIT_NUMBERS.bkash,
-    nagad: (doc && doc.nagad) || DEFAULT_DEPOSIT_NUMBERS.nagad,
-  };
-}
 
 module.exports = async (req, res) => {
   try {
@@ -54,55 +42,47 @@ module.exports = async (req, res) => {
       }
 
       // ---------- Deposit info: the admin's receiving bKash/Nagad number
-      // (settable from the admin panel, env vars as fallback) + the fixed
-      // one-time deposit amount, so the frontend never has to hardcode it. ----------
+      // + the fixed one-time deposit amount, so the frontend never has to
+      // hardcode it (can be changed anytime via env vars). ----------
       if (type === 'deposit_info') {
         const user = await db.collection('users').findOne({ telegramId: tgUser.id });
-        const numbers = await getPaymentNumbers(db);
         return res.status(200).json({
           amount: DEPOSIT_AMOUNT,
-          numbers,
+          numbers: DEPOSIT_NUMBERS,
           hasDeposited: !!(user && user.hasDeposited)
         });
       }
 
-      // ---------- Combined history: withdraw requests + the one-time
-      // verification deposit, newest first, shown to the user as a single
-      // "Withdraw History" list (still two separate collections in the DB
-      // — a separate "deposit history" view is no longer needed). ----------
-      const [withdraws, deposits] = await Promise.all([
-        db.collection('withdraw_requests')
+      // ---------- This user's own deposit request history ----------
+      if (type === 'deposit_history') {
+        const deposits = await db.collection('deposit_requests')
           .find({ telegramId: tgUser.id })
           .sort({ createdAt: -1 })
           .limit(20)
-          .toArray(),
-        db.collection('deposit_requests')
-          .find({ telegramId: tgUser.id })
-          .sort({ createdAt: -1 })
-          .limit(20)
-          .toArray()
-      ]);
+          .toArray();
+        return res.status(200).json({
+          history: deposits.map(d => ({
+            method: d.method,
+            amount: d.amount,
+            status: d.status,
+            createdAt: d.createdAt
+          }))
+        });
+      }
 
-      const history = [
-        ...withdraws.map(w => ({
-          kind: 'withdraw',
+      const history = await db.collection('withdraw_requests')
+        .find({ telegramId: tgUser.id })
+        .sort({ createdAt: -1 })
+        .limit(20)
+        .toArray();
+      return res.status(200).json({
+        history: history.map(w => ({
           method: w.method,
           amount: w.amount,
           status: w.status,
           createdAt: w.createdAt
-        })),
-        ...deposits.map(d => ({
-          kind: 'deposit',
-          method: d.method,
-          amount: d.amount,
-          status: d.status,
-          createdAt: d.createdAt
         }))
-      ]
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-        .slice(0, 20);
-
-      return res.status(200).json({ history });
+      });
     }
 
     if (req.method === 'POST') {
