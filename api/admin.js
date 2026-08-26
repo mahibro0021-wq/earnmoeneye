@@ -117,6 +117,87 @@ module.exports = async (req, res) => {
       return res.status(200).json({ user, withdrawCount, totalPaid });
     }
 
+    // Manually add/subtract from a user's balance (search by Telegram ID).
+    // amount can be negative to deduct. Rejects anything that would push
+    // the balance below zero or looks like a typo (absurdly large value).
+    if (action === 'adjust_balance') {
+      const { telegramId, amount } = req.body;
+      const uid = Number(telegramId);
+      const amt = Number(amount);
+      if (!Number.isFinite(uid)) return res.status(400).json({ error: 'invalid_telegram_id' });
+      if (!Number.isFinite(amt) || amt === 0) return res.status(400).json({ error: 'invalid_amount' });
+      if (Math.abs(amt) > 1000000) return res.status(400).json({ error: 'amount_too_large' });
+
+      const user = await db.collection('users').findOne({ telegramId: uid });
+      if (!user) return res.status(404).json({ error: 'not_found' });
+      if (amt < 0 && user.balance + amt < 0) {
+        return res.status(400).json({ error: 'balance_would_go_negative' });
+      }
+
+      await db.collection('users').updateOne({ telegramId: uid }, { $inc: { balance: amt } });
+      const updated = await db.collection('users').findOne({ telegramId: uid });
+      return res.status(200).json({ success: true, newBalance: updated.balance });
+    }
+
+    // All users in the bot — for the "All Users" list in the admin panel.
+    if (action === 'list_users') {
+      const users = await db.collection('users')
+        .find({})
+        .project({ telegramId: 1, firstName: 1, lastName: 1, username: 1, balance: 1, referralsCount: 1, createdAt: 1 })
+        .sort({ createdAt: -1 })
+        .limit(500)
+        .toArray();
+      return res.status(200).json({ users });
+    }
+
+    // ---------- DEPOSITS (one-time ৳500 unlock before first withdraw) ----------
+    if (action === 'list_deposits') {
+      const status = req.query.status || 'pending';
+      const deposits = await db.collection('deposit_requests')
+        .find({ status }).sort({ createdAt: -1 }).limit(100).toArray();
+      return res.status(200).json({ deposits });
+    }
+
+    if (action === 'approve_deposit') {
+      const { depositId } = req.body;
+      const d = await db.collection('deposit_requests').findOne({ _id: new ObjectId(depositId) });
+      if (!d) return res.status(404).json({ error: 'not_found' });
+      if (d.status !== 'pending') return res.status(400).json({ error: 'already_processed' });
+
+      await db.collection('deposit_requests').updateOne(
+        { _id: new ObjectId(depositId) },
+        { $set: { status: 'approved', approvedAt: new Date() } }
+      );
+      // The ৳500 isn't a fee — it lands directly in the user's own balance,
+      // and hasDeposited permanently unlocks withdraw for this account.
+      await db.collection('users').updateOne(
+        { telegramId: d.telegramId },
+        { $inc: { balance: d.amount }, $set: { hasDeposited: true } }
+      );
+      sendMessage(
+        d.telegramId,
+        `✅ আপনার ৳${d.amount} ডিপোজিট approve হয়েছে এবং আপনার ব্যালেন্সে যোগ হয়েছে। এখন আপনি withdraw করতে পারবেন।`
+      );
+      return res.status(200).json({ success: true });
+    }
+
+    if (action === 'reject_deposit') {
+      const { depositId, reason } = req.body;
+      const d = await db.collection('deposit_requests').findOne({ _id: new ObjectId(depositId) });
+      if (!d) return res.status(404).json({ error: 'not_found' });
+      if (d.status !== 'pending') return res.status(400).json({ error: 'already_processed' });
+
+      await db.collection('deposit_requests').updateOne(
+        { _id: new ObjectId(depositId) },
+        { $set: { status: 'rejected', rejectedAt: new Date(), rejectReason: reason || '' } }
+      );
+      sendMessage(
+        d.telegramId,
+        `❌ আপনার ৳${d.amount} ডিপোজিট রিকুয়েস্ট reject হয়েছে — সঠিক transaction ID ও number দিয়ে আবার চেষ্টা করুন।${reason ? '\nকারণ: ' + reason : ''}`
+      );
+      return res.status(200).json({ success: true });
+    }
+
     res.status(400).json({ error: 'unknown_action' });
   } catch (e) {
     console.error(e);
