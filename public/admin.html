@@ -35,6 +35,7 @@
     <button class="admin-tab-btn" data-s="deposits">Deposits</button>
     <button class="admin-tab-btn" data-s="users">Users</button>
     <button class="admin-tab-btn" data-s="allusers">All Users</button>
+    <button class="admin-tab-btn" data-s="settings">Settings</button>
   </div>
 
   <!-- TASKS -->
@@ -93,6 +94,18 @@
   <!-- ALL USERS -->
   <div class="admin-section" id="s-allusers">
     <div id="allUsersList"></div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="admin-section" id="s-settings">
+    <div class="form-card">
+      <div style="color:var(--text-muted);font-size:12px;margin-bottom:10px">ইউজাররা ভেরিফিকেশন ডিপোজিট পাঠানোর সময় এই নাম্বারগুলো দেখতে পাবে।</div>
+      <div class="field-label">bKash Number</div>
+      <input class="admin-input" id="settingsBkashInput" placeholder="01700000000" inputmode="numeric">
+      <div class="field-label">Nagad Number</div>
+      <input class="admin-input" id="settingsNagadInput" placeholder="01800000000" inputmode="numeric">
+      <button class="btn btn-primary btn-full" style="margin-top:12px" id="saveSettingsBtn">Save</button>
+    </div>
   </div>
 </div>
 
