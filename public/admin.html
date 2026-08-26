@@ -32,7 +32,9 @@
   <div class="admin-tabs">
     <button class="admin-tab-btn active" data-s="tasks">Tasks</button>
     <button class="admin-tab-btn" data-s="withdraws">Withdraws</button>
+    <button class="admin-tab-btn" data-s="deposits">Deposits</button>
     <button class="admin-tab-btn" data-s="users">Users</button>
+    <button class="admin-tab-btn" data-s="allusers">All Users</button>
   </div>
 
   <!-- TASKS -->
@@ -68,6 +70,16 @@
     <div id="withdrawListAdmin"></div>
   </div>
 
+  <!-- DEPOSITS -->
+  <div class="admin-section" id="s-deposits">
+    <div class="admin-tabs" style="margin-bottom:10px">
+      <button class="admin-tab-btn active" data-dstatus="pending">Pending</button>
+      <button class="admin-tab-btn" data-dstatus="approved">Approved</button>
+      <button class="admin-tab-btn" data-dstatus="rejected">Rejected</button>
+    </div>
+    <div id="depositListAdmin"></div>
+  </div>
+
   <!-- USERS -->
   <div class="admin-section" id="s-users">
     <div class="form-card">
@@ -76,6 +88,11 @@
       <button class="btn btn-primary btn-full" style="margin-top:10px" id="userSearchBtn">Search</button>
     </div>
     <div id="userResult"></div>
+  </div>
+
+  <!-- ALL USERS -->
+  <div class="admin-section" id="s-allusers">
+    <div id="allUsersList"></div>
   </div>
 </div>
 
