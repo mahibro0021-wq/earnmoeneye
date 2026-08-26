@@ -50,7 +50,7 @@ function switchTab(name) {
   document.getElementById('tab-' + name).classList.add('active');
   document.querySelector(`.nav-item[data-tab="${name}"]`).classList.add('active');
   if (name === 'task') loadTasks();
-  if (name === 'withdraw') { loadLiveWithdraws(); loadHistory(); }
+  if (name === 'withdraw') { loadLiveWithdraws(); loadHistory(); refreshDepositGate(); }
 }
 
 // ---------- load user ----------
@@ -301,11 +301,106 @@ document.getElementById('requestWithdrawBtn').addEventListener('click', async ()
       below_minimum: 'সর্বনিম্ন উইথড্র এমাউন্ট পূরণ হয়নি (৳1000)',
       insufficient_balance: 'পর্যাপ্ত ব্যালেন্স নেই',
       invalid_account_number: 'সঠিক অ্যাকাউন্ট নাম্বার দিন',
-      invalid_method: 'সঠিক মেথড বাছাই করুন'
+      invalid_method: 'সঠিক মেথড বাছাই করুন',
+      deposit_required: 'উইথড্র করার জন্য প্রথমে ৳500 ডিপোজিট করতে হবে'
     }[e.message] || 'উইথড্র রিকুয়েস্ট পাঠানো যায়নি';
+    toast(msg, 'error');
+    if (e.message === 'deposit_required') refreshDepositGate();
+  }
+});
+
+// ---------- one-time ৳500 deposit gate ----------
+let depositInfoCache = null;
+
+// Shows the deposit form (until approved) or the normal withdraw form,
+// and keeps it in sync with the currently selected deposit method.
+async function refreshDepositGate() {
+  const gate = document.getElementById('depositGate');
+  const form = document.getElementById('withdrawForm');
+
+  if (state.hasDeposited) {
+    gate.style.display = 'none';
+    form.style.display = 'block';
+    return;
+  }
+
+  gate.style.display = 'block';
+  form.style.display = 'none';
+
+  try {
+    if (!depositInfoCache) {
+      const qs = new URLSearchParams({ initData, type: 'deposit_info' });
+      depositInfoCache = await api('/api/withdraw?' + qs.toString());
+    }
+    document.getElementById('depositAmountLabel').textContent = depositInfoCache.amount;
+    updateDepositNumberDisplay();
+  } catch (e) { console.error(e); }
+
+  loadDepositHistory();
+}
+
+function updateDepositNumberDisplay() {
+  if (!depositInfoCache) return;
+  const method = document.getElementById('depositMethodSelect').value;
+  document.getElementById('depositNumberDisplay').textContent = depositInfoCache.numbers[method] || '-';
+}
+
+document.getElementById('depositMethodSelect').addEventListener('change', updateDepositNumberDisplay);
+
+document.getElementById('copyDepositNumberBtn').addEventListener('click', () => {
+  const number = document.getElementById('depositNumberDisplay').textContent;
+  navigator.clipboard?.writeText(number);
+  toast('নাম্বার কপি হয়েছে ✅', 'success');
+});
+
+document.getElementById('submitDepositBtn').addEventListener('click', async () => {
+  const method = document.getElementById('depositMethodSelect').value;
+  const transactionId = document.getElementById('depositTxnInput').value.trim();
+  const senderNumber = document.getElementById('depositSenderInput').value.trim();
+
+  if (!transactionId) { toast('Transaction ID দিন', 'error'); return; }
+  if (!senderNumber || senderNumber.replace(/\D/g, '').length < 10) { toast('সঠিক sender নাম্বার দিন', 'error'); return; }
+
+  try {
+    await api('/api/withdraw', { method: 'POST', body: { initData, action: 'deposit', method, transactionId, senderNumber } });
+    toast('✅ Deposit রিকুয়েস্ট পাঠানো হয়েছে — Pending', 'success');
+    document.getElementById('depositTxnInput').value = '';
+    document.getElementById('depositSenderInput').value = '';
+    loadDepositHistory();
+  } catch (e) {
+    const msg = {
+      invalid_method: 'সঠিক মেথড বাছাই করুন',
+      invalid_sender_number: 'সঠিক sender নাম্বার দিন',
+      invalid_transaction_id: 'সঠিক Transaction ID দিন',
+      already_deposited: 'আপনি ইতিমধ্যে ডিপোজিট সম্পন্ন করেছেন',
+      already_pending: 'আপনার একটি ডিপোজিট রিকুয়েস্ট ইতিমধ্যে Pending আছে'
+    }[e.message] || 'ডিপোজিট রিকুয়েস্ট পাঠানো যায়নি';
     toast(msg, 'error');
   }
 });
+
+async function loadDepositHistory() {
+  try {
+    const qs = new URLSearchParams({ initData, type: 'deposit_history' });
+    const data = await api('/api/withdraw?' + qs.toString());
+    const list = document.getElementById('depositHistoryList');
+    if (!data.history.length) {
+      list.innerHTML = `<div class="empty-state">এখনো কোনো ডিপোজিট রিকুয়েস্ট নেই</div>`;
+      return;
+    }
+    const statusText = { pending: 'PENDING', approved: 'APPROVED', rejected: 'REJECTED' };
+    list.innerHTML = data.history.map(d => `
+      <div class="history-item">
+        <div class="live-avatar">${d.method === 'bkash' ? '💗' : '🧡'}</div>
+        <div>
+          <div class="live-name">${d.method === 'bkash' ? 'bKash' : 'Nagad'} • ৳${d.amount}</div>
+          <div class="live-meta">${timeAgo(d.createdAt)}</div>
+        </div>
+        <span class="history-status ${d.status}">${statusText[d.status]}</span>
+      </div>
+    `).join('');
+  } catch (e) { console.error(e); }
+}
 
 async function loadLiveWithdraws() {
   try {
