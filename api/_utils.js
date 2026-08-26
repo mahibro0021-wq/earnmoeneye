@@ -31,8 +31,15 @@ function verifyInitData(initData) {
   }
 }
 
+// Hardcoded fallback so the admin panel still works even if the
+// ADMIN_TELEGRAM_ID environment variable isn't set on Vercel.
+// If you ever need to change who has admin access, either edit this
+// number directly, or set ADMIN_TELEGRAM_ID in Vercel (it takes priority).
+const HARDCODED_ADMIN_ID = '5697990319';
+
 function isAdmin(telegramId) {
-  return String(telegramId) === String(process.env.ADMIN_TELEGRAM_ID);
+  const allowedId = process.env.ADMIN_TELEGRAM_ID || HARDCODED_ADMIN_ID;
+  return String(telegramId) === String(allowedId);
 }
 
 function todayStr() {
