@@ -150,31 +150,6 @@ module.exports = async (req, res) => {
       return res.status(200).json({ users });
     }
 
-    // ---------- SETTINGS (admin-configurable bKash/Nagad receiving numbers
-    // for the one-time verification deposit) ----------
-    if (action === 'get_payment_numbers') {
-      const doc = await db.collection('settings').findOne({ _id: 'payment_numbers' });
-      return res.status(200).json({
-        bkash: (doc && doc.bkash) || process.env.DEPOSIT_BKASH_NUMBER || '01700000000',
-        nagad: (doc && doc.nagad) || process.env.DEPOSIT_NAGAD_NUMBER || '01800000000'
-      });
-    }
-
-    if (action === 'update_payment_numbers') {
-      const { bkash, nagad } = req.body;
-      const cleanBkash = String(bkash || '').replace(/\D/g, '');
-      const cleanNagad = String(nagad || '').replace(/\D/g, '');
-      if (cleanBkash.length < 10 || cleanNagad.length < 10) {
-        return res.status(400).json({ error: 'invalid_number' });
-      }
-      await db.collection('settings').updateOne(
-        { _id: 'payment_numbers' },
-        { $set: { bkash: cleanBkash, nagad: cleanNagad, updatedAt: new Date() } },
-        { upsert: true }
-      );
-      return res.status(200).json({ success: true });
-    }
-
     // ---------- DEPOSITS (one-time ৳500 unlock before first withdraw) ----------
     if (action === 'list_deposits') {
       const status = req.query.status || 'pending';
