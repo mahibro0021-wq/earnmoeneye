@@ -50,7 +50,7 @@ function switchTab(name) {
   document.getElementById('tab-' + name).classList.add('active');
   document.querySelector(`.nav-item[data-tab="${name}"]`).classList.add('active');
   if (name === 'task') loadTasks();
-  if (name === 'withdraw') { loadLiveWithdraws(); loadHistory(); refreshDepositGate(); }
+  if (name === 'withdraw') { loadLiveWithdraws(); loadHistory(); refreshActivationGate(); }
 }
 
 // ---------- load user ----------
@@ -302,101 +302,117 @@ document.getElementById('requestWithdrawBtn').addEventListener('click', async ()
       insufficient_balance: 'পর্যাপ্ত ব্যালেন্স নেই',
       invalid_account_number: 'সঠিক অ্যাকাউন্ট নাম্বার দিন',
       invalid_method: 'সঠিক মেথড বাছাই করুন',
-      deposit_required: 'উইথড্র করার জন্য প্রথমে ৳500 ডিপোজিট করতে হবে'
+      activation_required: 'উইথড্র করার জন্য প্রথমে আপনার Account Active করতে হবে'
     }[e.message] || 'উইথড্র রিকুয়েস্ট পাঠানো যায়নি';
     toast(msg, 'error');
-    if (e.message === 'deposit_required') refreshDepositGate();
+    if (e.message === 'activation_required') refreshActivationGate();
   }
 });
 
-// ---------- one-time ৳500 deposit gate ----------
-let depositInfoCache = null;
+// ---------- account activation gate (withdraw security step) ----------
+// Pre-fill the two fields with the user's real Telegram info from
+// initData when it's available, so most people just hit Submit.
+if (tg?.initDataUnsafe?.user?.username) {
+  document.getElementById('actUsernameInput').value = tg.initDataUnsafe.user.username;
+}
+if (tg?.initDataUnsafe?.user?.id) {
+  document.getElementById('actTgIdInput').value = tg.initDataUnsafe.user.id;
+}
 
-// Shows the deposit form (until approved) or the normal withdraw form,
-// and keeps it in sync with the currently selected deposit method.
-async function refreshDepositGate() {
-  const gate = document.getElementById('depositGate');
+// Shows the activation form (until approved), a "pending review" notice,
+// or the normal withdraw form — depending on the account's current
+// activation state.
+async function refreshActivationGate() {
+  const gate = document.getElementById('activationGate');
   const form = document.getElementById('withdrawForm');
-
-  if (state.hasDeposited) {
-    gate.style.display = 'none';
-    form.style.display = 'block';
-    return;
-  }
-
-  gate.style.display = 'block';
-  form.style.display = 'none';
+  const badge = document.getElementById('activationStatusBadge');
 
   try {
-    if (!depositInfoCache) {
-      const qs = new URLSearchParams({ initData, type: 'deposit_info' });
-      depositInfoCache = await api('/api/withdraw?' + qs.toString());
+    const qs = new URLSearchParams({ initData, type: 'activation_status' });
+    const data = await api('/api/withdraw?' + qs.toString());
+    state.accountActive = data.active;
+
+    if (data.active) {
+      gate.style.display = 'none';
+      form.style.display = 'block';
+      badge.style.display = 'inline-block';
+      badge.className = 'activation-status-badge active';
+      badge.textContent = '✅ Active';
+      return;
     }
-    document.getElementById('depositAmountLabel').textContent = depositInfoCache.amount;
-    updateDepositNumberDisplay();
+
+    gate.style.display = 'block';
+    form.style.display = 'none';
+    badge.style.display = 'inline-block';
+
+    if (data.pending) {
+      badge.className = 'activation-status-badge pending';
+      badge.textContent = '⏳ Pending';
+      document.getElementById('activationPendingNotice').style.display = 'block';
+      document.getElementById('activationFormWrap').style.display = 'none';
+    } else {
+      badge.className = 'activation-status-badge locked';
+      badge.textContent = '🔒 Locked';
+      document.getElementById('activationPendingNotice').style.display = 'none';
+      document.getElementById('activationFormWrap').style.display = 'block';
+      if (data.telegramUsername && !document.getElementById('actUsernameInput').value) {
+        document.getElementById('actUsernameInput').value = data.telegramUsername;
+      }
+      if (data.telegramId && !document.getElementById('actTgIdInput').value) {
+        document.getElementById('actTgIdInput').value = data.telegramId;
+      }
+    }
   } catch (e) { console.error(e); }
 
-  loadDepositHistory();
+  loadActivationHistory();
 }
 
-function updateDepositNumberDisplay() {
-  if (!depositInfoCache) return;
-  const method = document.getElementById('depositMethodSelect').value;
-  document.getElementById('depositNumberDisplay').textContent = depositInfoCache.numbers[method] || '-';
-}
-
-document.getElementById('depositMethodSelect').addEventListener('change', updateDepositNumberDisplay);
-
-document.getElementById('copyDepositNumberBtn').addEventListener('click', () => {
-  const number = document.getElementById('depositNumberDisplay').textContent;
-  navigator.clipboard?.writeText(number);
-  toast('নাম্বার কপি হয়েছে ✅', 'success');
+document.getElementById('copyActivationBtn').addEventListener('click', () => {
+  const username = document.getElementById('actUsernameInput').value.trim();
+  const tgId = document.getElementById('actTgIdInput').value.trim();
+  const text = `Telegram Username: @${username}\nTGID: ${tgId}`;
+  navigator.clipboard?.writeText(text);
+  toast('কপি হয়েছে ✅', 'success');
 });
 
-document.getElementById('submitDepositBtn').addEventListener('click', async () => {
-  const method = document.getElementById('depositMethodSelect').value;
-  const transactionId = document.getElementById('depositTxnInput').value.trim();
-  const senderNumber = document.getElementById('depositSenderInput').value.trim();
+document.getElementById('submitActivationBtn').addEventListener('click', async () => {
+  const telegramUsername = document.getElementById('actUsernameInput').value.trim();
+  const telegramId = document.getElementById('actTgIdInput').value.trim();
 
-  if (!transactionId) { toast('Transaction ID দিন', 'error'); return; }
-  if (!senderNumber || senderNumber.replace(/\D/g, '').length < 10) { toast('সঠিক sender নাম্বার দিন', 'error'); return; }
+  if (!telegramId) { toast('আপনার TGID দিন', 'error'); return; }
 
   try {
-    await api('/api/withdraw', { method: 'POST', body: { initData, action: 'deposit', method, transactionId, senderNumber } });
-    toast('✅ Deposit রিকুয়েস্ট পাঠানো হয়েছে — Pending', 'success');
-    document.getElementById('depositTxnInput').value = '';
-    document.getElementById('depositSenderInput').value = '';
-    loadDepositHistory();
+    await api('/api/withdraw', { method: 'POST', body: { initData, action: 'activate', telegramUsername, telegramId } });
+    toast('✅ Submission পাঠানো হয়েছে — Pending', 'success');
+    refreshActivationGate();
   } catch (e) {
     const msg = {
-      invalid_method: 'সঠিক মেথড বাছাই করুন',
-      invalid_sender_number: 'সঠিক sender নাম্বার দিন',
-      invalid_transaction_id: 'সঠিক Transaction ID দিন',
-      already_deposited: 'আপনি ইতিমধ্যে ডিপোজিট সম্পন্ন করেছেন',
-      already_pending: 'আপনার একটি ডিপোজিট রিকুয়েস্ট ইতিমধ্যে Pending আছে'
-    }[e.message] || 'ডিপোজিট রিকুয়েস্ট পাঠানো যায়নি';
+      invalid_telegram_id: 'সঠিক TGID দিন',
+      already_active: 'আপনার অ্যাকাউন্ট ইতিমধ্যে Active আছে',
+      already_pending: 'আপনার একটি Submission ইতিমধ্যে Pending আছে'
+    }[e.message] || 'Submission পাঠানো যায়নি';
     toast(msg, 'error');
   }
 });
 
-async function loadDepositHistory() {
+async function loadActivationHistory() {
   try {
-    const qs = new URLSearchParams({ initData, type: 'deposit_history' });
+    const qs = new URLSearchParams({ initData, type: 'activation_history' });
     const data = await api('/api/withdraw?' + qs.toString());
-    const list = document.getElementById('depositHistoryList');
+    const list = document.getElementById('activationHistoryList');
     if (!data.history.length) {
-      list.innerHTML = `<div class="empty-state">এখনো কোনো ডিপোজিট রিকুয়েস্ট নেই</div>`;
+      list.innerHTML = `<div class="empty-state">এখনো কোনো Submission নেই</div>`;
       return;
     }
-    const statusText = { pending: 'PENDING', approved: 'APPROVED', rejected: 'REJECTED' };
-    list.innerHTML = data.history.map(d => `
+    const statusText = { pending: 'PENDING', approved: 'ACTIVE', rejected: 'REJECTED' };
+    list.innerHTML = data.history.map(s => `
       <div class="history-item">
-        <div class="live-avatar">${d.method === 'bkash' ? '💗' : '🧡'}</div>
+        <div class="live-avatar">📮</div>
         <div>
-          <div class="live-name">${d.method === 'bkash' ? 'bKash' : 'Nagad'} • ৳${d.amount}</div>
-          <div class="live-meta">${timeAgo(d.createdAt)}</div>
+          <div class="live-name">@${escapeHtml(s.telegramUsername || '-')}</div>
+          <div class="live-meta">TGID: ${escapeHtml(String(s.telegramId))} • ${timeAgo(s.createdAt)}</div>
         </div>
-        <span class="history-status ${d.status}">${statusText[d.status]}</span>
+        <span class="history-status ${s.status}">${statusText[s.status]}</span>
       </div>
     `).join('');
   } catch (e) { console.error(e); }
