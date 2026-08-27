@@ -1,5 +1,5 @@
 const { connectToDatabase } = require('./_db');
-const { verifyInitData, isAdmin } = require('./_utils');
+const { verifyInitData, isAdmin, autoApproveExpiredActivations, getActivationSettings } = require('./_utils');
 const { sendMessage } = require('./_telegram');
 const { ObjectId } = require('mongodb');
 
@@ -200,6 +200,9 @@ module.exports = async (req, res) => {
 
     // ---------- ACCOUNT ACTIVATIONS (withdraw security gate) ----------
     if (action === 'list_activations') {
+      // Settle any submission that's aged past the 24h review window before
+      // showing the list, so "Pending" here always matches reality.
+      await autoApproveExpiredActivations(db);
       const status = req.query.status || 'pending';
       const activations = await db.collection('activation_requests')
         .find({ status }).sort({ createdAt: -1 }).limit(100).toArray();
@@ -237,6 +240,30 @@ module.exports = async (req, res) => {
       sendMessage(
         a.telegramId,
         `❌ আপনার Account Activation Submission reject হয়েছে — সঠিক তথ্য দিয়ে আবার Submit করুন।${reason ? '\nকারণ: ' + reason : ''}`
+      );
+      return res.status(200).json({ success: true });
+    }
+
+    // ---------- SETTINGS (editable "Please Fill Up" notice text) ----------
+    // Two admin-editable variants stored in one settings doc, so the admin
+    // can flip between a normal instruction and a stronger fraud-warning
+    // version at any time without touching code.
+    if (action === 'get_settings') {
+      const settings = await getActivationSettings(db);
+      return res.status(200).json({ settings });
+    }
+
+    if (action === 'update_settings') {
+      const { textNormal, textWarning, activeVariant } = req.body;
+      await db.collection('settings').updateOne(
+        { key: 'activation_notice' },
+        { $set: {
+          key: 'activation_notice',
+          textNormal: String(textNormal || '').trim(),
+          textWarning: String(textWarning || '').trim(),
+          activeVariant: activeVariant === 'warning' ? 'warning' : 'normal'
+        } },
+        { upsert: true }
       );
       return res.status(200).json({ success: true });
     }
