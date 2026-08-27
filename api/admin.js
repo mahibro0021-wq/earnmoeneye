@@ -198,6 +198,49 @@ module.exports = async (req, res) => {
       return res.status(200).json({ success: true });
     }
 
+    // ---------- ACCOUNT ACTIVATIONS (withdraw security gate) ----------
+    if (action === 'list_activations') {
+      const status = req.query.status || 'pending';
+      const activations = await db.collection('activation_requests')
+        .find({ status }).sort({ createdAt: -1 }).limit(100).toArray();
+      return res.status(200).json({ activations });
+    }
+
+    if (action === 'approve_activation') {
+      const { activationId } = req.body;
+      const a = await db.collection('activation_requests').findOne({ _id: new ObjectId(activationId) });
+      if (!a) return res.status(404).json({ error: 'not_found' });
+      if (a.status !== 'pending') return res.status(400).json({ error: 'already_processed' });
+
+      await db.collection('activation_requests').updateOne(
+        { _id: new ObjectId(activationId) },
+        { $set: { status: 'approved', approvedAt: new Date() } }
+      );
+      await db.collection('users').updateOne(
+        { telegramId: a.telegramId },
+        { $set: { accountActive: true } }
+      );
+      sendMessage(a.telegramId, `✅ আপনার অ্যাকাউন্ট Active হয়েছে। এখন আপনি Withdraw করতে পারবেন।`);
+      return res.status(200).json({ success: true });
+    }
+
+    if (action === 'reject_activation') {
+      const { activationId, reason } = req.body;
+      const a = await db.collection('activation_requests').findOne({ _id: new ObjectId(activationId) });
+      if (!a) return res.status(404).json({ error: 'not_found' });
+      if (a.status !== 'pending') return res.status(400).json({ error: 'already_processed' });
+
+      await db.collection('activation_requests').updateOne(
+        { _id: new ObjectId(activationId) },
+        { $set: { status: 'rejected', rejectedAt: new Date(), rejectReason: reason || '' } }
+      );
+      sendMessage(
+        a.telegramId,
+        `❌ আপনার Account Activation Submission reject হয়েছে — সঠিক তথ্য দিয়ে আবার Submit করুন।${reason ? '\nকারণ: ' + reason : ''}`
+      );
+      return res.status(200).json({ success: true });
+    }
+
     res.status(400).json({ error: 'unknown_action' });
   } catch (e) {
     console.error(e);
