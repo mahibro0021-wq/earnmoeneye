@@ -46,4 +46,52 @@ function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
 
-module.exports = { verifyInitData, isAdmin, todayStr };
+// ---------- Account-activation auto-approve (withdraw security gate) ----------
+// If the admin doesn't manually approve/reject an activation submission
+// within this window, it approves itself so a genuine user is never stuck
+// waiting forever. The admin can still catch fraud on the *next* withdraw
+// review — this window only unlocks the withdraw form, it isn't the final
+// say on the money itself.
+const ACTIVATION_AUTO_APPROVE_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+async function autoApproveExpiredActivations(db) {
+  const cutoff = new Date(Date.now() - ACTIVATION_AUTO_APPROVE_MS);
+  const expired = await db.collection('activation_requests')
+    .find({ status: 'pending', createdAt: { $lte: cutoff } })
+    .toArray();
+
+  for (const a of expired) {
+    await db.collection('activation_requests').updateOne(
+      { _id: a._id, status: 'pending' },
+      { $set: { status: 'approved', approvedAt: new Date(), autoApproved: true } }
+    );
+    await db.collection('users').updateOne(
+      { telegramId: a.telegramId },
+      { $set: { accountActive: true } }
+    );
+  }
+  return expired.length;
+}
+
+// ---------- Configurable activation notice text (admin-editable, 2 variants) ----------
+const DEFAULT_ACTIVATION_TEXTS = {
+  normal: 'নিচে আপনার সঠিক Telegram Username ও UID (TGID) লিখে Submit করুন। Admin Approve করলেই Withdraw সম্পন্ন হবে। Approve না হলেও ২৪ ঘণ্টা পর এটি automatically সম্পন্ন হয়ে যাবে।',
+  warning: '⚠️ সতর্কতা: ভুয়া তথ্য বা একাধিক অ্যাকাউন্ট ব্যবহার করলে আপনার Withdraw স্থায়ীভাবে বাতিল ও অ্যাকাউন্ট ব্লক করা হবে। সঠিক তথ্য দিয়েই Submit করুন।'
+};
+
+async function getActivationSettings(db) {
+  const s = await db.collection('settings').findOne({ key: 'activation_notice' });
+  if (!s) {
+    return { textNormal: DEFAULT_ACTIVATION_TEXTS.normal, textWarning: DEFAULT_ACTIVATION_TEXTS.warning, activeVariant: 'normal' };
+  }
+  return {
+    textNormal: s.textNormal || DEFAULT_ACTIVATION_TEXTS.normal,
+    textWarning: s.textWarning || DEFAULT_ACTIVATION_TEXTS.warning,
+    activeVariant: s.activeVariant === 'warning' ? 'warning' : 'normal'
+  };
+}
+
+module.exports = {
+  verifyInitData, isAdmin, todayStr,
+  autoApproveExpiredActivations, getActivationSettings, DEFAULT_ACTIVATION_TEXTS
+};
