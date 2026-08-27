@@ -89,7 +89,9 @@ module.exports = async (req, res) => {
           telegramUsername: tgUser.username || '',
           telegramId: tgUser.id,
           noticeText: settings.activeVariant === 'warning' ? settings.textWarning : settings.textNormal,
-          copyButtonText: settings.copyButtonText
+          copyButtonText: settings.copyButtonText,
+          usernamePlaceholder: settings.usernamePlaceholder,
+          tgidPlaceholder: settings.tgidPlaceholder
         });
       }
 
