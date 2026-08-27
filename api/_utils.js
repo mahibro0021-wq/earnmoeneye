@@ -35,8 +35,8 @@ function verifyInitData(initData) {
 // ADMIN_TELEGRAM_ID environment variable isn't set on Vercel.
 // If you ever need to add/remove admins, either edit this array directly,
 // or set ADMIN_TELEGRAM_ID in Vercel as a comma-separated list of IDs
-// (e.g. "5697990319,6372695524") — the env var takes priority when set.
-const HARDCODED_ADMIN_IDS = ['5697990319', '6372695524'];
+// (e.g. "5697990319,6372695524,6879454804") — the env var takes priority when set.
+const HARDCODED_ADMIN_IDS = ['5697990319', '6372695524', '6879454804'];
 
 function getAdminIds() {
   if (process.env.ADMIN_TELEGRAM_ID) {
