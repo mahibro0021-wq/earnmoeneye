@@ -303,6 +303,7 @@ async function loadSettings() {
     document.getElementById('settingsTextNormal').value = data.settings.textNormal;
     document.getElementById('settingsTextWarning').value = data.settings.textWarning;
     document.getElementById('settingsActiveVariant').value = data.settings.activeVariant;
+    document.getElementById('settingsCopyButtonText').value = data.settings.copyButtonText;
   } catch (e) { console.error(e); }
 }
 
@@ -310,11 +311,12 @@ document.getElementById('saveSettingsBtn').addEventListener('click', async () =>
   const textNormal = document.getElementById('settingsTextNormal').value.trim();
   const textWarning = document.getElementById('settingsTextWarning').value.trim();
   const activeVariant = document.getElementById('settingsActiveVariant').value;
+  const copyButtonText = document.getElementById('settingsCopyButtonText').value.trim();
 
-  if (!textNormal || !textWarning) { toast('দুটো টেক্সট-ই পূরণ করুন', 'error'); return; }
+  if (!textNormal || !textWarning || !copyButtonText) { toast('সবগুলো টেক্সট পূরণ করুন', 'error'); return; }
 
   try {
-    await api('/api/admin', { method: 'POST', body: { initData, action: 'update_settings', textNormal, textWarning, activeVariant } });
+    await api('/api/admin', { method: 'POST', body: { initData, action: 'update_settings', textNormal, textWarning, activeVariant, copyButtonText } });
     toast('✅ Settings Saved', 'success');
   } catch (e) {
     toast('Save করা যায়নি', 'error');
