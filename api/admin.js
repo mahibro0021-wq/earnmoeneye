@@ -277,6 +277,11 @@ module.exports = async (req, res) => {
       const text = String(message || '').trim();
       if (!text) return res.status(400).json({ error: 'missing_message' });
 
+      // Saved as an in-app notification too (shown from the bell icon with
+      // a green unread dot) — not just a Telegram DM, so users see it even
+      // if they don't check Telegram itself.
+      await db.collection('notifications').insertOne({ message: text, createdAt: new Date() });
+
       const users = await db.collection('users')
         .find({})
         .project({ telegramId: 1 })
