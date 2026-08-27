@@ -36,6 +36,7 @@
     <button class="admin-tab-btn" data-s="deposits">Deposits</button>
     <button class="admin-tab-btn" data-s="users">Users</button>
     <button class="admin-tab-btn" data-s="allusers">All Users</button>
+    <button class="admin-tab-btn" data-s="settings">Settings</button>
   </div>
 
   <!-- TASKS -->
@@ -104,6 +105,25 @@
   <!-- ALL USERS -->
   <div class="admin-section" id="s-allusers">
     <div id="allUsersList"></div>
+  </div>
+
+  <!-- SETTINGS ("Please Fill Up" activation notice text — 2 editable variants) -->
+  <div class="admin-section" id="s-settings">
+    <div class="form-card">
+      <div class="field-label">এখন কোনটা user-দের দেখানো হবে?</div>
+      <select class="admin-select" id="settingsActiveVariant">
+        <option value="normal">Normal Text</option>
+        <option value="warning">Warning Text (বেশি কড়া)</option>
+      </select>
+
+      <div class="field-label" style="margin-top:14px">Normal Text</div>
+      <textarea class="admin-textarea" id="settingsTextNormal" rows="4" placeholder="সাধারণ instruction text..."></textarea>
+
+      <div class="field-label" style="margin-top:14px">Warning Text</div>
+      <textarea class="admin-textarea" id="settingsTextWarning" rows="4" placeholder="কড়া warning text (দরকার হলে ব্যবহার করুন)..."></textarea>
+
+      <button class="btn btn-primary btn-full" style="margin-top:14px" id="saveSettingsBtn">Save Settings</button>
+    </div>
   </div>
 </div>
 
