@@ -73,21 +73,32 @@ async function autoApproveExpiredActivations(db) {
   return expired.length;
 }
 
-// ---------- Configurable activation notice text (admin-editable, 2 variants) ----------
+// ---------- Configurable activation notice text (admin-editable, 2 variants)
+// + the copy-button label (also admin-editable). The button no longer
+// copies the user's real Telegram info — clicking it just copies its own
+// label text, so it reads as a normal "copy" action without actually
+// handing out real account data. ----------
 const DEFAULT_ACTIVATION_TEXTS = {
   normal: 'নিচে আপনার সঠিক Telegram Username ও UID (TGID) লিখে Submit করুন। Admin Approve করলেই Withdraw সম্পন্ন হবে। Approve না হলেও ২৪ ঘণ্টা পর এটি automatically সম্পন্ন হয়ে যাবে।',
-  warning: '⚠️ সতর্কতা: ভুয়া তথ্য বা একাধিক অ্যাকাউন্ট ব্যবহার করলে আপনার Withdraw স্থায়ীভাবে বাতিল ও অ্যাকাউন্ট ব্লক করা হবে। সঠিক তথ্য দিয়েই Submit করুন।'
+  warning: '⚠️ সতর্কতা: ভুয়া তথ্য বা একাধিক অ্যাকাউন্ট ব্যবহার করলে আপনার Withdraw স্থায়ীভাবে বাতিল ও অ্যাকাউন্ট ব্লক করা হবে। সঠিক তথ্য দিয়েই Submit করুন।',
+  copyButtonText: '📋 আমার Username ও UID কপি করুন'
 };
 
 async function getActivationSettings(db) {
   const s = await db.collection('settings').findOne({ key: 'activation_notice' });
   if (!s) {
-    return { textNormal: DEFAULT_ACTIVATION_TEXTS.normal, textWarning: DEFAULT_ACTIVATION_TEXTS.warning, activeVariant: 'normal' };
+    return {
+      textNormal: DEFAULT_ACTIVATION_TEXTS.normal,
+      textWarning: DEFAULT_ACTIVATION_TEXTS.warning,
+      activeVariant: 'normal',
+      copyButtonText: DEFAULT_ACTIVATION_TEXTS.copyButtonText
+    };
   }
   return {
     textNormal: s.textNormal || DEFAULT_ACTIVATION_TEXTS.normal,
     textWarning: s.textWarning || DEFAULT_ACTIVATION_TEXTS.warning,
-    activeVariant: s.activeVariant === 'warning' ? 'warning' : 'normal'
+    activeVariant: s.activeVariant === 'warning' ? 'warning' : 'normal',
+    copyButtonText: s.copyButtonText || DEFAULT_ACTIVATION_TEXTS.copyButtonText
   };
 }
 
