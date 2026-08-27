@@ -341,6 +341,9 @@ async function refreshActivationGate({ forceShow = false } = {}) {
     const data = await api('/api/withdraw?' + qs.toString());
     state.accountActive = data.active;
     document.getElementById('activationNoticeText').textContent = data.noticeText || '';
+    if (data.copyButtonText) {
+      document.getElementById('copyMyInfoBtn').textContent = data.copyButtonText;
+    }
 
     if (data.active) {
       gate.style.display = 'none';
@@ -379,16 +382,14 @@ async function refreshActivationGate({ forceShow = false } = {}) {
   loadActivationHistory();
 }
 
-// Copies the user's REAL Telegram username/UID (straight from Telegram's
-// own data) to the clipboard — the input fields below stay empty until
-// the user pastes it in themselves.
-document.getElementById('copyMyInfoBtn').addEventListener('click', () => {
-  const username = tg?.initDataUnsafe?.user?.username || '';
-  const tgId = tg?.initDataUnsafe?.user?.id || '';
-  if (!tgId) { toast('Telegram তথ্য পাওয়া যায়নি', 'error'); return; }
-  const text = `Telegram Username: @${username}\nTGID: ${tgId}`;
+// This button no longer touches the user's real Telegram data — it's a
+// plain "copy" action that just copies its own visible label (admin-editable
+// from the panel), so clicking it doesn't actually hand out real account
+// info to anyone probing the page.
+document.getElementById('copyMyInfoBtn').addEventListener('click', (e) => {
+  const text = e.currentTarget.textContent.trim();
   navigator.clipboard?.writeText(text);
-  toast('আপনার তথ্য কপি হয়েছে ✅ — এখন নিচে Paste করুন', 'success');
+  toast('কপি হয়েছে ✅', 'success');
 });
 
 // Copies the admin-configured notice text itself (not the user's data).
