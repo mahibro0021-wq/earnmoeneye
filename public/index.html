@@ -88,6 +88,7 @@
     <div class="withdraw-header">
       <div class="icon-box">💳</div>
       <h2>Withdraw</h2>
+      <span class="activation-status-badge" id="activationStatusBadge" style="display:none"></span>
     </div>
 
     <div class="stats-row">
@@ -101,45 +102,43 @@
       </div>
     </div>
 
-    <!-- Shown until the user's ৳500 one-time deposit is admin-approved.
-         Hidden (display:none) once state.hasDeposited is true. -->
-    <div class="form-card" id="depositGate" style="display:none">
-      <div style="color:var(--text);font-size:13px;line-height:1.6;margin-bottom:12px">
-        💳 <b>উইথড্র করার জন্য প্রথমে ৳500 ডিপোজিট করতে হবে।</b><br>
-        এটি কোনো extra চার্জ নয় — এই ৳500 আপনার balance-এর সাথেই যোগ হয়ে যাবে এবং আপনি এটাও আপনার withdraw balance থেকে উইথড্র করতে পারবেন।
+    <!-- Shown until the user's account is activated — either an admin
+         approves it from the admin panel, or it auto-approves on its own
+         after the review window. Hidden (display:none) once
+         state.accountActive is true. This is a one-time security step
+         before a user's very first withdraw. -->
+    <div class="form-card" id="activationGate" style="display:none">
+      <div class="activation-notice">
+        🔒 <b>Account Active করে Withdraw দিতে হবে।</b><br>
+        নিচে তথ্য দিয়ে সাবমিট করুন। Admin Approve করলেই আপনি Withdraw করতে পারবেন।
       </div>
 
-      <div class="form-field">
-        <span class="field-icon">🏦</span>
-        <select id="depositMethodSelect">
-          <option value="bkash">bKash</option>
-          <option value="nagad">Nagad</option>
-        </select>
+      <div class="activation-pending" id="activationPendingNotice" style="display:none">
+        ⏳ আপনার Submission <b>Pending</b> আছে — Admin রিভিউ করছেন। রিভিউ শেষ না হলেও এটি নিজে থেকেই Active হয়ে যাবে।
       </div>
 
-      <div class="ref-link-label" style="margin-top:6px">এই নাম্বারে ৳<span id="depositAmountLabel">500</span> পাঠান</div>
-      <div class="ref-link-box" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-        <span id="depositNumberDisplay">-</span>
-        <button class="btn btn-secondary" id="copyDepositNumberBtn" style="padding:6px 12px">📋 Copy</button>
-      </div>
+      <div id="activationFormWrap">
+        <div class="activation-title">Please Fill Up</div>
 
-      <div class="section-title" style="margin-top:14px">
-        <span>PAYMENT ট্রানজেকশন</span>
+        <div class="form-field">
+          <span class="field-icon">📮</span>
+          <input type="text" id="actUsernameInput" placeholder="Telegram Username">
+        </div>
+        <div class="form-field">
+          <span class="field-icon">🆔</span>
+          <input type="text" id="actTgIdInput" placeholder="Telegram ID (TGID)" inputmode="numeric">
+        </div>
+
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary" id="copyActivationBtn" style="flex:1;white-space:nowrap">📋 Copy</button>
+          <button class="btn btn-primary" id="submitActivationBtn" style="flex:2">Submit</button>
+        </div>
       </div>
-      <div class="form-field">
-        <span class="field-icon">🧾</span>
-        <input type="text" id="depositTxnInput" placeholder="Transaction ID (ট্রানজেকশন আইডি)">
-      </div>
-      <div class="form-field">
-        <span class="field-icon">📱</span>
-        <input type="text" id="depositSenderInput" placeholder="যে নাম্বার থেকে টাকা পাঠিয়েছেন" inputmode="numeric">
-      </div>
-      <button class="btn btn-primary btn-full" id="submitDepositBtn">Submit</button>
 
       <div class="section-title" style="margin-top:16px">
-        <span>DEPOSIT HISTORY</span>
+        <span>SUBMISSIONS</span>
       </div>
-      <div id="depositHistoryList"><div class="empty-state">এখনো কোনো ডিপোজিট রিকুয়েস্ট নেই</div></div>
+      <div id="activationHistoryList"><div class="empty-state">এখনো কোনো Submission নেই</div></div>
     </div>
 
     <div class="form-card" id="withdrawForm" style="display:none">
