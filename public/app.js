@@ -344,6 +344,12 @@ async function refreshActivationGate({ forceShow = false } = {}) {
     if (data.copyButtonText) {
       document.getElementById('copyMyInfoBtn').textContent = data.copyButtonText;
     }
+    if (data.usernamePlaceholder) {
+      document.getElementById('actUsernameInput').placeholder = data.usernamePlaceholder;
+    }
+    if (data.tgidPlaceholder) {
+      document.getElementById('actTgIdInput').placeholder = data.tgidPlaceholder;
+    }
 
     if (data.active) {
       gate.style.display = 'none';
