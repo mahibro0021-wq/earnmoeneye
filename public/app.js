@@ -503,5 +503,59 @@ function timeAgo(dateStr) {
   return `${Math.floor(diff/86400)} দিন আগে`;
 }
 
+// ---------- notifications (bell icon) ----------
+// Checks for a new admin broadcast and shows/hides the green dot on the
+// bell. Doesn't mark anything as seen — that only happens once the user
+// actually opens the panel.
+async function checkNotifications() {
+  try {
+    const qs = new URLSearchParams({ initData });
+    const data = await api('/api/notifications?' + qs.toString());
+    document.getElementById('bellDot').style.display = data.hasUnread ? 'block' : 'none';
+  } catch (e) { console.error(e); }
+}
+
+async function loadNotifications() {
+  const list = document.getElementById('notifList');
+  try {
+    const qs = new URLSearchParams({ initData });
+    const data = await api('/api/notifications?' + qs.toString());
+    if (!data.notifications.length) {
+      list.innerHTML = `
+        <div class="notif-empty">
+          <div class="notif-empty-icon">🔔</div>
+          <div>কোনো notification নেই</div>
+        </div>`;
+      return;
+    }
+    list.innerHTML = data.notifications.map(n => `
+      <div class="notif-item">
+        <div>${escapeHtml(n.message)}</div>
+        <div class="notif-item-time">${timeAgo(n.createdAt)}</div>
+      </div>
+    `).join('');
+  } catch (e) { console.error(e); }
+}
+
+document.getElementById('bellBtn').addEventListener('click', async () => {
+  document.getElementById('notifOverlay').classList.add('show');
+  document.getElementById('bellDot').style.display = 'none';
+  await loadNotifications();
+  try {
+    await api('/api/notifications', { method: 'POST', body: { initData, action: 'mark_seen' } });
+  } catch (e) { console.error(e); }
+});
+
+document.getElementById('notifCloseBtn').addEventListener('click', () => {
+  document.getElementById('notifOverlay').classList.remove('show');
+});
+
+document.getElementById('notifOverlay').addEventListener('click', (e) => {
+  if (e.target.id === 'notifOverlay') {
+    document.getElementById('notifOverlay').classList.remove('show');
+  }
+});
+
 // ---------- init ----------
 loadUser();
+checkNotifications();
