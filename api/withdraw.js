@@ -1,5 +1,5 @@
 const { connectToDatabase } = require('./_db');
-const { verifyInitData } = require('./_utils');
+const { verifyInitData, autoApproveExpiredActivations, getActivationSettings } = require('./_utils');
 
 // Minimum withdraw amounts (per explicit spec: both methods = 1000tk)
 const MIN_WITHDRAW = { bkash: 1000, nagad: 1000 };
@@ -70,6 +70,45 @@ module.exports = async (req, res) => {
         });
       }
 
+      // ---------- Account-activation gate status ----------
+      // Triggered from the frontend only once the user actually tries to
+      // withdraw at/above the minimum amount — not shown up-front. Also
+      // opportunistically auto-approves any submission that's been pending
+      // past the review window, so this always reflects the latest state.
+      if (type === 'activation_status') {
+        await autoApproveExpiredActivations(db);
+        const user = await db.collection('users').findOne({ telegramId: tgUser.id });
+        const pending = await db.collection('activation_requests').findOne({
+          telegramId: tgUser.id,
+          status: 'pending'
+        });
+        const settings = await getActivationSettings(db);
+        return res.status(200).json({
+          active: !!(user && user.accountActive),
+          pending: !!pending,
+          telegramUsername: tgUser.username || '',
+          telegramId: tgUser.id,
+          noticeText: settings.activeVariant === 'warning' ? settings.textWarning : settings.textNormal
+        });
+      }
+
+      // ---------- This user's own activation-submission history ----------
+      if (type === 'activation_history') {
+        const history = await db.collection('activation_requests')
+          .find({ telegramId: tgUser.id })
+          .sort({ createdAt: -1 })
+          .limit(20)
+          .toArray();
+        return res.status(200).json({
+          history: history.map(a => ({
+            telegramUsername: a.telegramUsername,
+            telegramId: a.telegramIdSubmitted,
+            status: a.status,
+            createdAt: a.createdAt
+          }))
+        });
+      }
+
       const history = await db.collection('withdraw_requests')
         .find({ telegramId: tgUser.id })
         .sort({ createdAt: -1 })
@@ -135,15 +174,44 @@ module.exports = async (req, res) => {
         return res.status(200).json({ success: true });
       }
 
-      const { method, accountNumber, amount } = req.body;
+      // ---------- Submit account-activation (withdraw security gate) ----------
+      // Only reachable once the user has actually tried to withdraw at/above
+      // the minimum amount (frontend gates this) — this is what puts the
+      // "Please Fill Up" submission into the admin's Activations queue.
+      if (action === 'activate') {
+        const { telegramUsername, telegramId } = req.body;
+        const cleanTgId = String(telegramId || '').replace(/\D/g, '');
+        if (!cleanTgId) {
+          return res.status(400).json({ error: 'invalid_telegram_id' });
+        }
 
-      // Withdraw is locked behind the one-time deposit until an admin
-      // approves it — checked server-side too, not just in the UI, so it
-      // can't be bypassed by calling this endpoint directly.
-      const user = await db.collection('users').findOne({ telegramId: tgUser.id });
-      if (!user || !user.hasDeposited) {
-        return res.status(400).json({ error: 'deposit_required', depositAmount: DEPOSIT_AMOUNT });
+        const user = await db.collection('users').findOne({ telegramId: tgUser.id });
+        if (user && user.accountActive) {
+          return res.status(400).json({ error: 'already_active' });
+        }
+
+        const existingPending = await db.collection('activation_requests').findOne({
+          telegramId: tgUser.id,
+          status: 'pending'
+        });
+        if (existingPending) {
+          return res.status(400).json({ error: 'already_pending' });
+        }
+
+        const displayName = user ? (user.firstName || user.username || 'User') : 'User';
+        await db.collection('activation_requests').insertOne({
+          telegramId: tgUser.id,
+          displayName,
+          telegramUsername: String(telegramUsername || '').replace(/^@/, '').trim(),
+          telegramIdSubmitted: cleanTgId,
+          status: 'pending',
+          createdAt: new Date()
+        });
+
+        return res.status(200).json({ success: true });
       }
+
+      const { method, accountNumber, amount } = req.body;
 
       const amt = Number(amount);
       if (!['bkash', 'nagad'].includes(method)) {
@@ -155,8 +223,19 @@ module.exports = async (req, res) => {
       if (!amt || amt < MIN_WITHDRAW[method]) {
         return res.status(400).json({ error: 'below_minimum', minimum: MIN_WITHDRAW[method] });
       }
-      if (user.balance < amt) {
+
+      const user = await db.collection('users').findOne({ telegramId: tgUser.id });
+      if (!user || user.balance < amt) {
         return res.status(400).json({ error: 'insufficient_balance' });
+      }
+
+      // Security gate only kicks in right here — once the user has actually
+      // reached the minimum withdrawable amount and clicks withdraw. Checked
+      // server-side too, not just in the UI, so it can't be bypassed by
+      // calling this endpoint directly.
+      await autoApproveExpiredActivations(db);
+      if (!user.accountActive) {
+        return res.status(400).json({ error: 'activation_required' });
       }
 
       await db.collection('users').updateOne(
