@@ -37,6 +37,7 @@
     <button class="admin-tab-btn" data-s="users">Users</button>
     <button class="admin-tab-btn" data-s="allusers">All Users</button>
     <button class="admin-tab-btn" data-s="settings">Settings</button>
+    <button class="admin-tab-btn" data-s="broadcast">Broadcast</button>
   </div>
 
   <!-- TASKS -->
@@ -126,6 +127,16 @@
       <textarea class="admin-textarea" id="settingsCopyButtonText" rows="2" placeholder="📋 আমার Username ও UID কপি করুন"></textarea>
 
       <button class="btn btn-primary btn-full" style="margin-top:14px" id="saveSettingsBtn">Save Settings</button>
+    </div>
+  </div>
+
+  <!-- BROADCAST (send a message to every user via the bot) -->
+  <div class="admin-section" id="s-broadcast">
+    <div class="form-card">
+      <div class="field-label">Message (সব ইউজারকে বট দিয়ে পাঠানো হবে)</div>
+      <textarea class="admin-textarea" id="broadcastMessage" rows="6" placeholder="এখানে আপনার notification message লিখুন..."></textarea>
+      <button class="btn btn-primary btn-full" style="margin-top:12px" id="sendBroadcastBtn">📢 সবাইকে পাঠান</button>
+      <div id="broadcastResult" style="margin-top:10px;font-size:12.5px;color:var(--text-muted)"></div>
     </div>
   </div>
 </div>
