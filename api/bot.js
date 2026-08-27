@@ -9,12 +9,26 @@ module.exports = async (req, res) => {
 
     if (msg && msg.text && msg.text.startsWith('/start')) {
       const appUrl = process.env.APP_URL;
+
+      // Capture referral payload: Telegram sends "/start 123456" as the
+      // message text when the user came from a
+      // https://t.me/BotUsername?start=123456 referral link.
+      const parts = msg.text.trim().split(/\s+/);
+      const refPayload = parts.length > 1 ? parts[1] : '';
+
+      // Forward it as a normal URL query param so app.js can read it
+      // (this button is a plain web_app link, not a startapp deep link,
+      // so Telegram won't put it into initDataUnsafe.start_param on its own).
+      const finalUrl = refPayload
+        ? `${appUrl}${appUrl.includes('?') ? '&' : '?'}ref=${encodeURIComponent(refPayload)}`
+        : appUrl;
+
       await sendMessage(
         msg.chat.id,
         `স্বাগতম <b>প্রতিদিন টাকা</b> তে! 🎉\n\nবিজ্ঞাপন দেখে এবং বন্ধুদের রেফার করে প্রতিদিন টাকা আয় করুন।`,
         {
           reply_markup: {
-            inline_keyboard: [[{ text: '💰 অ্যাপ চালু করুন', web_app: { url: appUrl } }]]
+            inline_keyboard: [[{ text: '💰 অ্যাপ চালু করুন', web_app: { url: finalUrl } }]]
           }
         }
       );
