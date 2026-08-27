@@ -29,9 +29,10 @@
   <h2 style="margin-bottom:4px">⚙️ Admin Panel</h2>
   <div style="font-size:12px;color:var(--text-muted);margin-bottom:16px">Daily Money — শুধু অ্যাডমিন অ্যাক্সেস</div>
 
-  <div class="admin-tabs">
+  <div class="admin-tabs" id="mainAdminTabs">
     <button class="admin-tab-btn active" data-s="tasks">Tasks</button>
     <button class="admin-tab-btn" data-s="withdraws">Withdraws</button>
+    <button class="admin-tab-btn" data-s="activations">Activations</button>
     <button class="admin-tab-btn" data-s="deposits">Deposits</button>
     <button class="admin-tab-btn" data-s="users">Users</button>
     <button class="admin-tab-btn" data-s="allusers">All Users</button>
@@ -62,7 +63,7 @@
 
   <!-- WITHDRAWS -->
   <div class="admin-section" id="s-withdraws">
-    <div class="admin-tabs" style="margin-bottom:10px">
+    <div class="admin-tabs" id="withdrawSubTabs" style="margin-bottom:10px">
       <button class="admin-tab-btn active" data-wstatus="pending">Pending</button>
       <button class="admin-tab-btn" data-wstatus="approved">Approved</button>
       <button class="admin-tab-btn" data-wstatus="rejected">Rejected</button>
@@ -70,9 +71,19 @@
     <div id="withdrawListAdmin"></div>
   </div>
 
+  <!-- ACTIVATIONS (withdraw security gate: Telegram Username + TGID submissions) -->
+  <div class="admin-section" id="s-activations">
+    <div class="admin-tabs" id="activationSubTabs" style="margin-bottom:10px">
+      <button class="admin-tab-btn active" data-astatus="pending">Pending</button>
+      <button class="admin-tab-btn" data-astatus="approved">Approved</button>
+      <button class="admin-tab-btn" data-astatus="rejected">Rejected</button>
+    </div>
+    <div id="activationListAdmin"></div>
+  </div>
+
   <!-- DEPOSITS -->
   <div class="admin-section" id="s-deposits">
-    <div class="admin-tabs" style="margin-bottom:10px">
+    <div class="admin-tabs" id="depositSubTabs" style="margin-bottom:10px">
       <button class="admin-tab-btn active" data-dstatus="pending">Pending</button>
       <button class="admin-tab-btn" data-dstatus="approved">Approved</button>
       <button class="admin-tab-btn" data-dstatus="rejected">Rejected</button>
