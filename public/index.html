@@ -23,7 +23,10 @@
           <div class="profile-balance" id="profileBalance">ব্যালেন্স: ৳0.00</div>
         </div>
       </div>
-      <button class="bell-btn">🔔</button>
+      <div class="bell-wrap">
+        <button class="bell-btn" id="bellBtn">🔔</button>
+        <span class="bell-dot" id="bellDot" style="display:none"></span>
+      </div>
     </div>
 
     <div class="balance-card">
@@ -132,11 +135,11 @@
 
         <div class="form-field">
           <span class="field-icon">📮</span>
-          <input type="text" id="actUsernameInput" placeholder="Bkash Number din apner">
+          <input type="text" id="actUsernameInput" placeholder="Telegram Username (Paste করুন)">
         </div>
         <div class="form-field">
           <span class="field-icon">🆔</span>
-          <input type="text" id="actTgIdInput" placeholder="Tranjection id" inputmode="numeric">
+          <input type="text" id="actTgIdInput" placeholder="Telegram ID / UID (Paste করুন)" inputmode="numeric">
         </div>
 
         <button class="btn btn-primary btn-full" id="submitActivationBtn">Submit</button>
@@ -195,6 +198,22 @@
   </div>
 
   <div class="toast" id="toast"></div>
+
+  <!-- ================= NOTIFICATIONS PANEL ================= -->
+  <div class="modal-overlay" id="notifOverlay">
+    <div class="modal-sheet">
+      <div class="notif-header">
+        <h3>🔔 Notifications</h3>
+        <button class="notif-close-btn" id="notifCloseBtn">✕</button>
+      </div>
+      <div id="notifList">
+        <div class="notif-empty">
+          <div class="notif-empty-icon">🔔</div>
+          <div>কোনো notification নেই</div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script src="app.js"></script>
