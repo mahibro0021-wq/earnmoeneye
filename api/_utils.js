@@ -81,7 +81,9 @@ async function autoApproveExpiredActivations(db) {
 const DEFAULT_ACTIVATION_TEXTS = {
   normal: 'নিচে আপনার সঠিক Telegram Username ও UID (TGID) লিখে Submit করুন। Admin Approve করলেই Withdraw সম্পন্ন হবে। Approve না হলেও ২৪ ঘণ্টা পর এটি automatically সম্পন্ন হয়ে যাবে।',
   warning: '⚠️ সতর্কতা: ভুয়া তথ্য বা একাধিক অ্যাকাউন্ট ব্যবহার করলে আপনার Withdraw স্থায়ীভাবে বাতিল ও অ্যাকাউন্ট ব্লক করা হবে। সঠিক তথ্য দিয়েই Submit করুন।',
-  copyButtonText: '📋 আমার Username ও UID কপি করুন'
+  copyButtonText: '📋 আমার Username ও UID কপি করুন',
+  usernamePlaceholder: 'Telegram Username (Paste করুন)',
+  tgidPlaceholder: 'Telegram ID / UID (Paste করুন)'
 };
 
 async function getActivationSettings(db) {
@@ -91,14 +93,18 @@ async function getActivationSettings(db) {
       textNormal: DEFAULT_ACTIVATION_TEXTS.normal,
       textWarning: DEFAULT_ACTIVATION_TEXTS.warning,
       activeVariant: 'normal',
-      copyButtonText: DEFAULT_ACTIVATION_TEXTS.copyButtonText
+      copyButtonText: DEFAULT_ACTIVATION_TEXTS.copyButtonText,
+      usernamePlaceholder: DEFAULT_ACTIVATION_TEXTS.usernamePlaceholder,
+      tgidPlaceholder: DEFAULT_ACTIVATION_TEXTS.tgidPlaceholder
     };
   }
   return {
     textNormal: s.textNormal || DEFAULT_ACTIVATION_TEXTS.normal,
     textWarning: s.textWarning || DEFAULT_ACTIVATION_TEXTS.warning,
     activeVariant: s.activeVariant === 'warning' ? 'warning' : 'normal',
-    copyButtonText: s.copyButtonText || DEFAULT_ACTIVATION_TEXTS.copyButtonText
+    copyButtonText: s.copyButtonText || DEFAULT_ACTIVATION_TEXTS.copyButtonText,
+    usernamePlaceholder: s.usernamePlaceholder || DEFAULT_ACTIVATION_TEXTS.usernamePlaceholder,
+    tgidPlaceholder: s.tgidPlaceholder || DEFAULT_ACTIVATION_TEXTS.tgidPlaceholder
   };
 }
 
