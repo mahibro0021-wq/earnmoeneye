@@ -118,21 +118,27 @@
       </div>
 
       <div id="activationFormWrap">
+        <div class="activation-must-fill">⚠️ অবশ্যই এই ফর্মটি পূরণ করে সাবমিট করতে হবে</div>
+
         <div class="activation-title">Please Fill Up</div>
+
+        <div class="copy-notice-box">
+          <span class="copy-notice-text" id="activationNoticeText">লোড হচ্ছে...</span>
+          <button class="copy-icon-btn" id="copyNoticeTextBtn" title="Copy">📋</button>
+        </div>
+
+        <button class="btn btn-secondary btn-full" id="copyMyInfoBtn" style="margin:12px 0 10px">📋 আমার Username ও UID কপি করুন</button>
 
         <div class="form-field">
           <span class="field-icon">📮</span>
-          <input type="text" id="actUsernameInput" placeholder="Telegram Username">
+          <input type="text" id="actUsernameInput" placeholder="Telegram Username (Paste করুন)">
         </div>
         <div class="form-field">
           <span class="field-icon">🆔</span>
-          <input type="text" id="actTgIdInput" placeholder="Telegram ID (TGID)" inputmode="numeric">
+          <input type="text" id="actTgIdInput" placeholder="Telegram ID / UID (Paste করুন)" inputmode="numeric">
         </div>
 
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-secondary" id="copyActivationBtn" style="flex:1;white-space:nowrap">📋 Copy</button>
-          <button class="btn btn-primary" id="submitActivationBtn" style="flex:2">Submit</button>
-        </div>
+        <button class="btn btn-primary btn-full" id="submitActivationBtn">Submit</button>
       </div>
 
       <div class="section-title" style="margin-top:16px">
@@ -141,7 +147,7 @@
       <div id="activationHistoryList"><div class="empty-state">এখনো কোনো Submission নেই</div></div>
     </div>
 
-    <div class="form-card" id="withdrawForm" style="display:none">
+    <div class="form-card" id="withdrawForm">
       <div class="form-field">
         <span class="field-icon">🏦</span>
         <select id="methodSelect">
