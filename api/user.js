@@ -6,13 +6,11 @@ module.exports = async (req, res) => {
   try {
     const initData = req.method === 'GET' ? req.query.initData : req.body?.initData;
     const startParam = req.method === 'GET' ? req.query.startParam : req.body?.startParam;
-
     const tgUser = verifyInitData(initData);
     if (!tgUser) return res.status(401).json({ error: 'Invalid Telegram data' });
 
     const db = await connectToDatabase();
     const users = db.collection('users');
-
     let user = await users.findOne({ telegramId: tgUser.id });
 
     if (!user) {
@@ -20,7 +18,6 @@ module.exports = async (req, res) => {
       if (startParam && /^\d+$/.test(String(startParam)) && Number(startParam) !== tgUser.id) {
         referredBy = Number(startParam);
       }
-
       const newUser = {
         telegramId: tgUser.id,
         firstName: tgUser.first_name || '',
@@ -67,6 +64,16 @@ module.exports = async (req, res) => {
     }
 
     const botUsername = process.env.BOT_USERNAME || 'moneyearn12131_bot';
+    // Mini App "startapp" deep link (BotFather short name set via /newapp).
+    // Clicking this link opens the Mini App DIRECTLY — from anywhere
+    // (chat list, browser, another app's share sheet, no prior bot
+    // interaction needed) — and Telegram itself fills
+    // initDataUnsafe.start_param with the value after "startapp=".
+    // app.js already reads that on load, so referral tracking happens
+    // automatically the instant the app opens, with no /start message
+    // and no button click required.
+    const miniAppShortName = process.env.MINIAPP_SHORT_NAME || 'earn';
+    const referralLink = `https://t.me/${botUsername}/${miniAppShortName}?startapp=${user.telegramId}`;
 
     res.status(200).json({
       telegramId: user.telegramId,
@@ -76,7 +83,7 @@ module.exports = async (req, res) => {
       adsWatchedToday: user.adsWatchedToday,
       adsWatchedTotal: user.adsWatchedTotal,
       referralsCount: user.referralsCount,
-        referralLink: `https://t.me/${botUsername}/earn?startapp=${user.telegramId}`
+      referralLink,
       achievements: user.achievements || { ref10Claimed: false, ads17ClaimedDate: null },
       hasDeposited: !!user.hasDeposited
     });
