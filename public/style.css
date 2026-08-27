@@ -262,7 +262,22 @@ body {
 .live-row {
   display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
 }
-.live-dot { width: 8px; height: 8px; border-radius: 50%; background: #ef4444; box-shadow: 0 0 0 4px rgba(239,68,68,0.2); }
+
+/* Red "on air" dot(s) next to LIVE WITHDRAW — now actually pulses like a
+   real live indicator instead of sitting static. Works for one dot or
+   the double-dot layout, since it's just a class-based animation. */
+.live-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 0 4px rgba(239,68,68,0.2);
+  animation: liveDotPulse 1.6s ease-out infinite;
+}
+@keyframes liveDotPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(239,68,68,0.55); opacity: 1; }
+  70%  { box-shadow: 0 0 0 9px rgba(239,68,68,0); opacity: 0.85; }
+  100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); opacity: 1; }
+}
+
 .live-title { font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
 .live-badge { margin-left: auto; font-size: 10px; font-weight: 700; color: var(--green); background: rgba(34,197,94,0.15); padding: 3px 9px; border-radius: 20px; }
 
@@ -284,6 +299,25 @@ body {
 .history-status.approved { background: rgba(34,197,94,0.15); color: var(--green); }
 .history-status.rejected { background: rgba(239,68,68,0.15); color: #ef4444; }
 .empty-state { text-align: center; color: var(--text-muted); font-size: 12.5px; padding: 24px 0; }
+
+/* ---------- Live withdraw ticker transition ----------
+   #liveWithdrawList always holds exactly ONE .live-item. Every rotation
+   we fade+slide the current one up and out, then fade+slide the next
+   one in from below — same spot on screen, name just swaps in place. */
+.live-item.ticker-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+.live-item.ticker-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity .3s ease, transform .3s ease;
+}
+.live-item.ticker-exit {
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: opacity .3s ease, transform .3s ease;
+}
 
 /* ---------- Account activation gate (withdraw security step) ---------- */
 .activation-notice {
