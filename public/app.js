@@ -2,7 +2,9 @@ const tg = window.Telegram?.WebApp;
 if (tg) { tg.ready(); tg.expand(); }
 
 const initData = tg?.initData || '';
-const startParam = tg?.initDataUnsafe?.start_param || '';
+const urlParams = new URLSearchParams(window.location.search);
+// Priority: real startapp param (if Mini App short-link ever configured) → fallback ?ref= from bot.js → nothing
+const startParam = tg?.initDataUnsafe?.start_param || urlParams.get('ref') || '';
 
 let state = {
   balance: 0,
