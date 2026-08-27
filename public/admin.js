@@ -322,3 +322,28 @@ document.getElementById('saveSettingsBtn').addEventListener('click', async () =>
     toast('Save করা যায়নি', 'error');
   }
 });
+
+// ---------- broadcast (send a message to every user via the bot) ----------
+document.getElementById('sendBroadcastBtn').addEventListener('click', async () => {
+  const message = document.getElementById('broadcastMessage').value.trim();
+  const resultEl = document.getElementById('broadcastResult');
+  if (!message) { toast('একটি Message লিখুন', 'error'); return; }
+  if (!confirm('সব ইউজারকে এই Message পাঠাতে চান?')) return;
+
+  const btn = document.getElementById('sendBroadcastBtn');
+  btn.disabled = true;
+  btn.textContent = '📤 পাঠানো হচ্ছে...';
+  resultEl.textContent = '';
+
+  try {
+    const data = await api('/api/admin', { method: 'POST', body: { initData, action: 'broadcast', message } });
+    toast('✅ Broadcast পাঠানো হয়েছে', 'success');
+    resultEl.textContent = `মোট ${data.total} জন ইউজারকে পাঠানো হয়েছে।`;
+    document.getElementById('broadcastMessage').value = '';
+  } catch (e) {
+    toast('Broadcast পাঠানো যায়নি', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '📢 সবাইকে পাঠান';
+  }
+});
