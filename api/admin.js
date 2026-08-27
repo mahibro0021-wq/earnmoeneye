@@ -254,14 +254,15 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'update_settings') {
-      const { textNormal, textWarning, activeVariant } = req.body;
+      const { textNormal, textWarning, activeVariant, copyButtonText } = req.body;
       await db.collection('settings').updateOne(
         { key: 'activation_notice' },
         { $set: {
           key: 'activation_notice',
           textNormal: String(textNormal || '').trim(),
           textWarning: String(textWarning || '').trim(),
-          activeVariant: activeVariant === 'warning' ? 'warning' : 'normal'
+          activeVariant: activeVariant === 'warning' ? 'warning' : 'normal',
+          copyButtonText: String(copyButtonText || '').trim()
         } },
         { upsert: true }
       );
