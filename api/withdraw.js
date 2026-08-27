@@ -88,7 +88,8 @@ module.exports = async (req, res) => {
           pending: !!pending,
           telegramUsername: tgUser.username || '',
           telegramId: tgUser.id,
-          noticeText: settings.activeVariant === 'warning' ? settings.textWarning : settings.textNormal
+          noticeText: settings.activeVariant === 'warning' ? settings.textWarning : settings.textNormal,
+          copyButtonText: settings.copyButtonText
         });
       }
 
@@ -240,7 +241,14 @@ module.exports = async (req, res) => {
 
       await db.collection('users').updateOne(
         { telegramId: tgUser.id },
-        { $inc: { balance: -amt } }
+        {
+          $inc: { balance: -amt },
+          // Reset the security gate right after this withdraw goes through,
+          // so the NEXT withdraw attempt asks for a fresh Username/UID
+          // verification too — this isn't a one-time-ever unlock, it's
+          // required every single time.
+          $set: { accountActive: false }
+        }
       );
 
       const displayName = user.firstName || user.username || 'User';
