@@ -35,12 +35,13 @@ async function api(path, opts = {}) {
 })();
 
 // ---------- section tabs ----------
-document.querySelectorAll('.admin-tabs')[0].querySelectorAll('.admin-tab-btn').forEach(btn => {
+document.getElementById('mainAdminTabs').querySelectorAll('.admin-tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('.admin-tabs')[0].querySelectorAll('.admin-tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('mainAdminTabs').querySelectorAll('.admin-tab-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
     document.getElementById('s-' + btn.dataset.s).classList.add('active');
+    if (btn.dataset.s === 'activations') loadActivations('pending');
     if (btn.dataset.s === 'deposits') loadDeposits('pending');
     if (btn.dataset.s === 'allusers') loadAllUsers();
   });
@@ -97,9 +98,9 @@ async function loadTasks() {
 }
 
 // ---------- withdraws ----------
-document.querySelectorAll('.admin-tabs')[1].querySelectorAll('.admin-tab-btn').forEach(btn => {
+document.getElementById('withdrawSubTabs').querySelectorAll('.admin-tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('.admin-tabs')[1].querySelectorAll('.admin-tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('withdrawSubTabs').querySelectorAll('.admin-tab-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     loadWithdraws(btn.dataset.wstatus);
   });
@@ -137,10 +138,56 @@ async function loadWithdraws(status) {
   } catch (e) { console.error(e); }
 }
 
-// ---------- deposits ----------
-document.querySelectorAll('.admin-tabs')[2].querySelectorAll('.admin-tab-btn').forEach(btn => {
+// ---------- account activations (withdraw security gate) ----------
+document.getElementById('activationSubTabs').querySelectorAll('.admin-tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('.admin-tabs')[2].querySelectorAll('.admin-tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('activationSubTabs').querySelectorAll('.admin-tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    loadActivations(btn.dataset.astatus);
+  });
+});
+
+async function loadActivations(status) {
+  try {
+    const qs = new URLSearchParams({ initData, action: 'list_activations', status });
+    const data = await api('/api/admin?' + qs.toString());
+    const list = document.getElementById('activationListAdmin');
+    list.innerHTML = data.activations.map(a => `
+      <div class="withdraw-row">
+        <div class="row-line"><b>${escapeHtml(a.displayName)}</b><span>${status.toUpperCase()}</span></div>
+        <div style="color:var(--text-muted)">Telegram Username: @${escapeHtml(a.telegramUsername || '-')}</div>
+        <div style="color:var(--text-muted)">TGID Submitted: ${escapeHtml(String(a.telegramIdSubmitted || '-'))}</div>
+        <div style="color:var(--text-muted)">UID: ${a.telegramId}</div>
+        ${status === 'pending' ? `
+          <div class="row-actions">
+            <button class="btn-approve" data-approve="${a._id}">Approve</button>
+            <button class="btn-reject" data-reject="${a._id}">Reject</button>
+          </div>` : ''}
+      </div>
+    `).join('') || '<div class="empty-state">কিছু নেই</div>';
+
+    list.querySelectorAll('[data-approve]').forEach(b => b.addEventListener('click', async () => {
+      try {
+        await api('/api/admin', { method: 'POST', body: { initData, action: 'approve_activation', activationId: b.dataset.approve } });
+        toast('✅ Activation Approved', 'success');
+        loadActivations('pending');
+      } catch (e) { toast('করা যায়নি', 'error'); }
+    }));
+    list.querySelectorAll('[data-reject]').forEach(b => b.addEventListener('click', async () => {
+      const reason = prompt('Reject reason (optional):') || '';
+      try {
+        await api('/api/admin', { method: 'POST', body: { initData, action: 'reject_activation', activationId: b.dataset.reject, reason } });
+        toast('❌ Rejected', 'success');
+        loadActivations('pending');
+      } catch (e) { toast('করা যায়নি', 'error'); }
+    }));
+  } catch (e) { console.error(e); }
+}
+
+// ---------- deposits ----------
+document.getElementById('depositSubTabs').querySelectorAll('.admin-tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.getElementById('depositSubTabs').querySelectorAll('.admin-tab-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     loadDeposits(btn.dataset.dstatus);
   });
@@ -198,6 +245,7 @@ document.getElementById('userSearchBtn').addEventListener('click', async () => {
         <div>Balance: ৳${Number(u.balance).toFixed(2)}</div>
         <div>Ads watched (total): ${u.adsWatchedTotal || 0}</div>
         <div>Referrals: ${u.referralsCount || 0}</div>
+        <div>Account Active: ${u.accountActive ? '✅ হ্যাঁ' : '❌ না'}</div>
         <div>Deposit করেছে: ${u.hasDeposited ? '✅ হ্যাঁ' : '❌ না'}</div>
         <div>Withdrawals approved: ${data.withdrawCount} (মোট ৳${data.totalPaid})</div>
         <div class="field-label" style="margin-top:10px">Balance +/- করুন</div>
