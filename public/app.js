@@ -51,6 +51,7 @@ function switchTab(name) {
   document.querySelector(`.nav-item[data-tab="${name}"]`).classList.add('active');
   if (name === 'task') loadTasks();
   if (name === 'withdraw') { loadLiveWithdraws(); loadHistory(); refreshActivationGate(); }
+  else stopLiveWithdrawTicker(); // pause the ticker while user isn't looking at it
 }
 
 // ---------- load user ----------
@@ -448,26 +449,85 @@ async function loadActivationHistory() {
   } catch (e) { console.error(e); }
 }
 
+// ---------- live withdraw ticker ----------
+// Instead of stacking every live withdraw as a separate row, we keep ONE
+// slot on screen and rotate through the list every few seconds. If there
+// are only 2 entries, those same 2 will just keep alternating forever —
+// which is exactly the "loop through whoever's in the list" behaviour asked for.
+let liveWithdrawQueue = [];
+let liveWithdrawIndex = 0;
+let liveWithdrawTimer = null;
+const LIVE_WITHDRAW_ROTATE_MS = 3000; // how long each name stays on screen
+
 async function loadLiveWithdraws() {
   try {
     const qs = new URLSearchParams({ initData, type: 'live' });
     const data = await api('/api/withdraw?' + qs.toString());
-    const list = document.getElementById('liveWithdrawList');
-    if (!data.live.length) {
-      list.innerHTML = `<div class="empty-state">এখনো কোনো লাইভ উইথড্র নেই</div>`;
-      return;
-    }
-    list.innerHTML = data.live.map(w => `
-      <div class="live-item">
-        <div class="live-avatar">${escapeHtml(w.name.charAt(0))}</div>
-        <div>
-          <div class="live-name">${escapeHtml(w.name)}</div>
-          <div class="live-meta">${w.method === 'bkash' ? 'bKash' : 'Nagad'} • ${timeAgo(w.time)}</div>
-        </div>
-        <div class="live-amount">+৳${w.amount}</div>
-      </div>
-    `).join('');
+    liveWithdrawQueue = data.live || [];
+    liveWithdrawIndex = 0;
+    startLiveWithdrawTicker();
   } catch (e) { console.error(e); }
+}
+
+function startLiveWithdrawTicker() {
+  stopLiveWithdrawTicker();
+  const list = document.getElementById('liveWithdrawList');
+  if (!liveWithdrawQueue.length) {
+    list.innerHTML = `<div class="empty-state">এখনো কোনো লাইভ উইথড্র নেই</div>`;
+    return;
+  }
+  renderLiveWithdrawItem(true); // show the first one immediately, no fade-out needed
+  if (liveWithdrawQueue.length > 1) {
+    liveWithdrawTimer = setInterval(() => {
+      liveWithdrawIndex = (liveWithdrawIndex + 1) % liveWithdrawQueue.length;
+      renderLiveWithdrawItem(false);
+    }, LIVE_WITHDRAW_ROTATE_MS);
+  }
+}
+
+function stopLiveWithdrawTicker() {
+  if (liveWithdrawTimer) {
+    clearInterval(liveWithdrawTimer);
+    liveWithdrawTimer = null;
+  }
+}
+
+function renderLiveWithdrawItem(isFirst) {
+  const list = document.getElementById('liveWithdrawList');
+  const w = liveWithdrawQueue[liveWithdrawIndex];
+  if (!w) return;
+
+  const buildEl = () => {
+    const el = document.createElement('div');
+    el.className = 'live-item ticker-enter';
+    el.innerHTML = `
+      <div class="live-avatar">${escapeHtml(w.name.charAt(0))}</div>
+      <div>
+        <div class="live-name">${escapeHtml(w.name)}</div>
+        <div class="live-meta">${w.method === 'bkash' ? 'bKash' : 'Nagad'} • ${timeAgo(w.time)}</div>
+      </div>
+      <div class="live-amount">+৳${w.amount}</div>
+    `;
+    return el;
+  };
+
+  if (isFirst || !list.firstElementChild) {
+    list.innerHTML = '';
+    const el = buildEl();
+    list.appendChild(el);
+    requestAnimationFrame(() => el.classList.add('ticker-enter-active'));
+    return;
+  }
+
+  // fade + slide the current name out, then swap in the next one
+  const current = list.firstElementChild;
+  current.classList.add('ticker-exit');
+  setTimeout(() => {
+    list.innerHTML = '';
+    const el = buildEl();
+    list.appendChild(el);
+    requestAnimationFrame(() => el.classList.add('ticker-enter-active'));
+  }, 300);
 }
 
 async function loadHistory() {
