@@ -269,6 +269,36 @@ module.exports = async (req, res) => {
       return res.status(200).json({ success: true });
     }
 
+    // ---------- BROADCAST (send a message to every user via the bot) ----------
+    if (action === 'broadcast') {
+      const { message } = req.body;
+      const text = String(message || '').trim();
+      if (!text) return res.status(400).json({ error: 'missing_message' });
+
+      const users = await db.collection('users')
+        .find({})
+        .project({ telegramId: 1 })
+        .toArray();
+
+      // Telegram allows roughly ~30 messages/second across the whole bot,
+      // so send in small batches with a short pause between them rather
+      // than firing everything at once. sendMessage() already swallows
+      // its own errors (e.g. a user who blocked the bot), so one failed
+      // send never stops the rest of the broadcast.
+      const BATCH_SIZE = 25;
+      let sent = 0;
+      for (let i = 0; i < users.length; i += BATCH_SIZE) {
+        const batch = users.slice(i, i + BATCH_SIZE);
+        await Promise.all(batch.map(u => sendMessage(u.telegramId, text)));
+        sent += batch.length;
+        if (i + BATCH_SIZE < users.length) {
+          await new Promise(r => setTimeout(r, 1000));
+        }
+      }
+
+      return res.status(200).json({ success: true, sent, total: users.length });
+    }
+
     res.status(400).json({ error: 'unknown_action' });
   } catch (e) {
     console.error(e);
