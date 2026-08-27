@@ -1,6 +1,5 @@
 const { sendMessage } = require('./_telegram');
-
-const HARDCODED_ADMIN_ID = '5697990319';
+const { isAdmin } = require('./_utils');
 
 module.exports = async (req, res) => {
   try {
@@ -38,8 +37,7 @@ module.exports = async (req, res) => {
     // so it gets valid initData (opening the plain URL in a normal
     // browser tab will NOT work — Telegram never sends initData there).
     if (msg && msg.text && msg.text.startsWith('/admin')) {
-      const adminId = process.env.ADMIN_TELEGRAM_ID || HARDCODED_ADMIN_ID;
-      if (String(msg.from.id) !== String(adminId)) {
+      if (!isAdmin(msg.from.id)) {
         await sendMessage(msg.chat.id, '🔒 এই কমান্ড শুধুমাত্র অ্যাডমিনের জন্য।');
         return res.status(200).json({ ok: true });
       }
