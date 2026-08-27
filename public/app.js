@@ -304,25 +304,34 @@ document.getElementById('requestWithdrawBtn').addEventListener('click', async ()
       invalid_method: 'সঠিক মেথড বাছাই করুন',
       activation_required: 'উইথড্র করার জন্য প্রথমে আপনার Account Active করতে হবে'
     }[e.message] || 'উইথড্র রিকুয়েস্ট পাঠানো যায়নি';
-    toast(msg, 'error');
-    if (e.message === 'activation_required') refreshActivationGate();
+
+    if (e.message === 'activation_required') {
+      // Only reachable once the user actually qualifies for withdraw
+      // (right amount + balance) — this is the moment the security
+      // check kicks in, so simulate a brief verification pause before
+      // revealing the form instead of popping it open instantly.
+      toast('🔍 নিরাপত্তা যাচাই করা হচ্ছে...', '');
+      setTimeout(() => {
+        refreshActivationGate({ forceShow: true });
+        document.getElementById('activationGate').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 900);
+    } else {
+      toast(msg, 'error');
+    }
   }
 });
 
 // ---------- account activation gate (withdraw security step) ----------
-// Pre-fill the two fields with the user's real Telegram info from
-// initData when it's available, so most people just hit Submit.
-if (tg?.initDataUnsafe?.user?.username) {
-  document.getElementById('actUsernameInput').value = tg.initDataUnsafe.user.username;
-}
-if (tg?.initDataUnsafe?.user?.id) {
-  document.getElementById('actTgIdInput').value = tg.initDataUnsafe.user.id;
-}
+// Username/UID fields are left empty on purpose — the user must Copy
+// their own info and Paste it in manually rather than have it silently
+// auto-filled, since that friction is part of the check.
 
 // Shows the activation form (until approved), a "pending review" notice,
 // or the normal withdraw form — depending on the account's current
-// activation state.
-async function refreshActivationGate() {
+// activation state. forceShow reveals the gate immediately even when the
+// user hasn't submitted anything yet (used right when the gate first
+// triggers from a withdraw attempt).
+async function refreshActivationGate({ forceShow = false } = {}) {
   const gate = document.getElementById('activationGate');
   const form = document.getElementById('withdrawForm');
   const badge = document.getElementById('activationStatusBadge');
@@ -331,6 +340,7 @@ async function refreshActivationGate() {
     const qs = new URLSearchParams({ initData, type: 'activation_status' });
     const data = await api('/api/withdraw?' + qs.toString());
     state.accountActive = data.active;
+    document.getElementById('activationNoticeText').textContent = data.noticeText || '';
 
     if (data.active) {
       gate.style.display = 'none';
@@ -341,13 +351,13 @@ async function refreshActivationGate() {
       return;
     }
 
-    gate.style.display = 'block';
-    form.style.display = 'none';
     badge.style.display = 'inline-block';
 
     if (data.pending) {
       badge.className = 'activation-status-badge pending';
       badge.textContent = '⏳ Pending';
+      gate.style.display = 'block';
+      form.style.display = 'none';
       document.getElementById('activationPendingNotice').style.display = 'block';
       document.getElementById('activationFormWrap').style.display = 'none';
     } else {
@@ -355,11 +365,13 @@ async function refreshActivationGate() {
       badge.textContent = '🔒 Locked';
       document.getElementById('activationPendingNotice').style.display = 'none';
       document.getElementById('activationFormWrap').style.display = 'block';
-      if (data.telegramUsername && !document.getElementById('actUsernameInput').value) {
-        document.getElementById('actUsernameInput').value = data.telegramUsername;
-      }
-      if (data.telegramId && !document.getElementById('actTgIdInput').value) {
-        document.getElementById('actTgIdInput').value = data.telegramId;
+      if (forceShow) {
+        gate.style.display = 'block';
+        form.style.display = 'none';
+      } else {
+        // Not yet triggered — keep the normal withdraw form showing.
+        gate.style.display = 'none';
+        form.style.display = 'block';
       }
     }
   } catch (e) { console.error(e); }
@@ -367,10 +379,21 @@ async function refreshActivationGate() {
   loadActivationHistory();
 }
 
-document.getElementById('copyActivationBtn').addEventListener('click', () => {
-  const username = document.getElementById('actUsernameInput').value.trim();
-  const tgId = document.getElementById('actTgIdInput').value.trim();
+// Copies the user's REAL Telegram username/UID (straight from Telegram's
+// own data) to the clipboard — the input fields below stay empty until
+// the user pastes it in themselves.
+document.getElementById('copyMyInfoBtn').addEventListener('click', () => {
+  const username = tg?.initDataUnsafe?.user?.username || '';
+  const tgId = tg?.initDataUnsafe?.user?.id || '';
+  if (!tgId) { toast('Telegram তথ্য পাওয়া যায়নি', 'error'); return; }
   const text = `Telegram Username: @${username}\nTGID: ${tgId}`;
+  navigator.clipboard?.writeText(text);
+  toast('আপনার তথ্য কপি হয়েছে ✅ — এখন নিচে Paste করুন', 'success');
+});
+
+// Copies the admin-configured notice text itself (not the user's data).
+document.getElementById('copyNoticeTextBtn').addEventListener('click', () => {
+  const text = document.getElementById('activationNoticeText').textContent.trim();
   navigator.clipboard?.writeText(text);
   toast('কপি হয়েছে ✅', 'success');
 });
