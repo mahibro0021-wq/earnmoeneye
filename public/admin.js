@@ -304,6 +304,8 @@ async function loadSettings() {
     document.getElementById('settingsTextWarning').value = data.settings.textWarning;
     document.getElementById('settingsActiveVariant').value = data.settings.activeVariant;
     document.getElementById('settingsCopyButtonText').value = data.settings.copyButtonText;
+    document.getElementById('settingsUsernamePlaceholder').value = data.settings.usernamePlaceholder;
+    document.getElementById('settingsTgidPlaceholder').value = data.settings.tgidPlaceholder;
   } catch (e) { console.error(e); }
 }
 
@@ -312,11 +314,15 @@ document.getElementById('saveSettingsBtn').addEventListener('click', async () =>
   const textWarning = document.getElementById('settingsTextWarning').value.trim();
   const activeVariant = document.getElementById('settingsActiveVariant').value;
   const copyButtonText = document.getElementById('settingsCopyButtonText').value.trim();
+  const usernamePlaceholder = document.getElementById('settingsUsernamePlaceholder').value.trim();
+  const tgidPlaceholder = document.getElementById('settingsTgidPlaceholder').value.trim();
 
-  if (!textNormal || !textWarning || !copyButtonText) { toast('সবগুলো টেক্সট পূরণ করুন', 'error'); return; }
+  if (!textNormal || !textWarning || !copyButtonText || !usernamePlaceholder || !tgidPlaceholder) {
+    toast('সবগুলো টেক্সট পূরণ করুন', 'error'); return;
+  }
 
   try {
-    await api('/api/admin', { method: 'POST', body: { initData, action: 'update_settings', textNormal, textWarning, activeVariant, copyButtonText } });
+    await api('/api/admin', { method: 'POST', body: { initData, action: 'update_settings', textNormal, textWarning, activeVariant, copyButtonText, usernamePlaceholder, tgidPlaceholder } });
     toast('✅ Settings Saved', 'success');
   } catch (e) {
     toast('Save করা যায়নি', 'error');
