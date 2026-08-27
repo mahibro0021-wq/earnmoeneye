@@ -102,11 +102,12 @@
       </div>
     </div>
 
-    <!-- Shown until the user's account is activated — either an admin
-         approves it from the admin panel, or it auto-approves on its own
-         after the review window. Hidden (display:none) once
-         state.accountActive is true. This is a one-time security step
-         before a user's very first withdraw. -->
+    <!-- Shown before EVERY withdraw attempt (once the amount/balance
+         actually qualifies) — either an admin approves it from the admin
+         panel, or it auto-approves on its own after the review window.
+         Hidden (display:none) once state.accountActive is true for the
+         current withdraw. Right after that withdraw goes through, the
+         gate resets so the next withdraw asks again. -->
     <div class="form-card" id="activationGate" style="display:none">
       <div class="activation-notice">
         🔒 <b>Account Active করে Withdraw দিতে হবে।</b><br>
