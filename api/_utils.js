@@ -31,15 +31,22 @@ function verifyInitData(initData) {
   }
 }
 
-// Hardcoded fallback so the admin panel still works even if the
+// Hardcoded fallback list so the admin panel still works even if the
 // ADMIN_TELEGRAM_ID environment variable isn't set on Vercel.
-// If you ever need to change who has admin access, either edit this
-// number directly, or set ADMIN_TELEGRAM_ID in Vercel (it takes priority).
-const HARDCODED_ADMIN_ID = '5697990319';
+// If you ever need to add/remove admins, either edit this array directly,
+// or set ADMIN_TELEGRAM_ID in Vercel as a comma-separated list of IDs
+// (e.g. "5697990319,6372695524") — the env var takes priority when set.
+const HARDCODED_ADMIN_IDS = ['5697990319', '6372695524'];
+
+function getAdminIds() {
+  if (process.env.ADMIN_TELEGRAM_ID) {
+    return process.env.ADMIN_TELEGRAM_ID.split(',').map(id => id.trim()).filter(Boolean);
+  }
+  return HARDCODED_ADMIN_IDS;
+}
 
 function isAdmin(telegramId) {
-  const allowedId = process.env.ADMIN_TELEGRAM_ID || HARDCODED_ADMIN_ID;
-  return String(telegramId) === String(allowedId);
+  return getAdminIds().includes(String(telegramId));
 }
 
 function todayStr() {
@@ -109,6 +116,6 @@ async function getActivationSettings(db) {
 }
 
 module.exports = {
-  verifyInitData, isAdmin, todayStr,
+  verifyInitData, isAdmin, getAdminIds, todayStr,
   autoApproveExpiredActivations, getActivationSettings, DEFAULT_ACTIVATION_TEXTS
 };
