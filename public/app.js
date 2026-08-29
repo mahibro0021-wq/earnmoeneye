@@ -137,8 +137,8 @@ document.getElementById('watchAdBtn').addEventListener('click', () => {
 // completed/rewarded view (its own callback) — never on a plain timeout,
 // so a user can't skip early and still get paid.
 function showAd(onReward) {
-  if (window.show_9999999 /* example: Monetag SDK function name */) {
-    window.show_9999999().then(onReward).catch(() => toast('বিজ্ঞাপন লোড করা যায়নি', 'error'));
+  if (window.show_11678821) {
+    window.show_11678821().then(onReward).catch(() => toast('বিজ্ঞাপন লোড করা যায়নি', 'error'));
     return;
   }
   toast('⚠️ Ad SDK এখনো কনফিগার করা হয়নি (index.html-এ যোগ করুন)', 'error');
